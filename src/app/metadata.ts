@@ -3,7 +3,7 @@ import { Metadata } from 'next'
 export const metadata: Metadata = {
   metadataBase: new URL('https://w3pk.w3hc.org'),
 
-  title: 'W3PK Playground',
+  title: 'w3pk Playground',
   description:
     'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
 
@@ -11,11 +11,11 @@ export const metadata: Metadata = {
   authors: [{ name: 'Julien', url: 'https://github.com/julienbrg' }],
 
   openGraph: {
-    title: 'W3PK Playground',
+    title: 'w3pk Playground',
     description:
       'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
     url: 'https://w3pk.w3hc.org',
-    siteName: 'W3PK Playground',
+    siteName: 'w3pk Playground',
     images: [
       {
         url: '/huangshan.png',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'W3PK Playground',
+    title: 'w3pk Playground',
     description:
       'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
     images: ['/huangshan.png'],

@@ -98,7 +98,7 @@ export default function Header() {
             <Flex align="center" gap={3}>
               <Link href="/">
                 <Heading as="h3" size="md" textAlign="center">
-                  W3PK Playground
+                  w3pk
                 </Heading>
               </Link>
             </Flex>
@@ -166,14 +166,9 @@ export default function Header() {
                 size="sm"
               />
               <MenuList minWidth="auto">
-                <Link href="/." color="white">
+                <Link href="/addr" color="white">
                   <MenuItem fontSize="md" px={4} py={3}>
                     My addresses
-                  </MenuItem>
-                </Link>
-                <Link href="/." color="white">
-                  <MenuItem fontSize="md" px={4} py={3}>
-                    Stealth addresses
                   </MenuItem>
                 </Link>
                 <Link href="/sig" color="white">
@@ -181,26 +176,21 @@ export default function Header() {
                     Sign message
                   </MenuItem>
                 </Link>
-                <Link href="/." color="white">
-                  <MenuItem fontSize="md" px={4} py={3}>
-                    Send transaction
-                  </MenuItem>
-                </Link>
-                <Link href="/." color="white">
-                  <MenuItem fontSize="md" px={4} py={3}>
-                    ZK proofs
-                  </MenuItem>
-                </Link>
-                <Link href="/." color="white">
-                  <MenuItem fontSize="md" px={4} py={3}>
-                    EIP-7702
-                  </MenuItem>
-                </Link>
-                <Link href="/." color="white">
-                  <MenuItem fontSize="md" px={4} py={3}>
-                    Examples
-                  </MenuItem>
-                </Link>
+                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
+                  Stealth addresses
+                </MenuItem>
+                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
+                  Send transaction
+                </MenuItem>
+                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
+                  ZK proofs
+                </MenuItem>
+                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
+                  EIP-7702
+                </MenuItem>
+                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
+                  Examples
+                </MenuItem>
               </MenuList>
             </Menu>
             <LanguageSelector />
@@ -217,7 +207,7 @@ export default function Header() {
           <ModalBody>
             <VStack spacing={4}>
               <Text fontSize="sm" color="gray.400" textAlign="center">
-                Create a new account with W3PK authentication. An Ethereum wallet will be generated
+                Create a new account with w3pk authentication. An Ethereum wallet will be generated
                 automatically.
               </Text>
               <FormControl>

@@ -19,6 +19,11 @@ interface W3pkUser {
   ethereumAddress: string
 }
 
+interface DerivedWallet {
+  address: string
+  privateKey: string
+}
+
 interface W3pkType {
   isAuthenticated: boolean
   user: W3pkUser | null
@@ -27,6 +32,7 @@ interface W3pkType {
   register: (username: string) => Promise<void>
   logout: () => void
   signMessage: (message: string) => Promise<string | null>
+  deriveWallet: (index: number) => Promise<DerivedWallet>
   generateStealthAddress: () => Promise<{
     stealthAddress: string
     stealthPrivateKey: string
@@ -43,6 +49,7 @@ const W3PK = createContext<W3pkType>({
   register: async (username: string) => {},
   logout: () => {},
   signMessage: async (message: string) => null,
+  deriveWallet: async (index: number) => ({ address: '', privateKey: '' }),
   generateStealthAddress: async () => null,
   getStealthKeys: async () => null,
 })
@@ -268,6 +275,61 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     }
   }
 
+  const deriveWallet = async (index: number): Promise<DerivedWallet> => {
+    if (!user) {
+      throw new Error('Not authenticated. Please log in first.')
+    }
+
+    try {
+      console.log(`=== Deriving Wallet at Index ${index} ===`)
+
+      // Check if we need fresh authentication
+      // If w3pk.isAuthenticated is false, we need to login first
+      if (!w3pk.isAuthenticated) {
+        console.log('SDK not authenticated, requiring fresh login...')
+        await w3pk.login()
+        console.log('Fresh authentication completed')
+      }
+
+      const derivedWallet = await w3pk.deriveWallet(index)
+      console.log(`Wallet derived successfully at index ${index}:`, derivedWallet.address)
+
+      return derivedWallet
+    } catch (error: any) {
+      console.error(`Wallet derivation failed at index ${index}:`, error)
+
+      // If it's an auth error, try to login once and retry
+      if (error.message?.includes('Not authenticated') || error.message?.includes('login')) {
+        console.log('Authentication required, prompting for login...')
+        try {
+          await w3pk.login()
+          const derivedWallet = await w3pk.deriveWallet(index)
+          console.log(`Wallet derived successfully after re-authentication at index ${index}`)
+          return derivedWallet
+        } catch (retryError: any) {
+          console.error('Retry after authentication failed:', retryError)
+          toast({
+            title: 'Authentication Required',
+            description: 'Please authenticate to derive addresses',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          })
+          throw retryError
+        }
+      }
+
+      toast({
+        title: 'Derivation Failed',
+        description: error.message || `Failed to derive wallet at index ${index}`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+      throw error
+    }
+  }
+
   const logout = () => {
     w3pk.logout()
 
@@ -366,6 +428,7 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         register,
         logout,
         signMessage,
+        deriveWallet,
         generateStealthAddress,
         getStealthKeys,
       }}

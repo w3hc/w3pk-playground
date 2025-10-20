@@ -78,7 +78,7 @@ export default function Home() {
                 </Box>
               </Link>
 
-              <Link href="/.">
+              <Link href="/addr">
                 <Box
                   bg="gray.800"
                   p={6}
@@ -103,11 +103,11 @@ export default function Home() {
                         <Icon as={FiShield} color="white" boxSize={5} />
                       </Box>
                       <Heading as="h3" size="md" color="white">
-                        Stealth addresses
+                        My addresses
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Manage stealth addresses
+                      View all your addresses
                     </Text>
                   </Box>
                   <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
@@ -158,7 +158,7 @@ export default function Home() {
             {/* Additional Info */}
             <Box bg="gray.800" p={4} borderRadius="md" textAlign="center">
               <Text fontSize="sm" color="gray.400" mb={2}>
-                Your account is secured with W3PK (passkey)
+                Your account is secured with w3pk (passkey)
               </Text>
               <Text fontSize="xs" color="blue.300">
                 🔐 All operations require biometric or security key verification
