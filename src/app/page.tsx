@@ -30,8 +30,8 @@ export default function Home() {
                 Welcome {user?.displayName || user?.username}!
               </Heading>
               <Text color="gray.400" mb={2}>
-                It's a pleasure to have you here! You're at the right place if you want to test the
-                one and only w3pk brand new SDK. Sit back, relax, and enjoy!
+                It&apos;s a pleasure to have you here! You&apos;re at the right place if you want to
+                test the one and only w3pk brand new SDK. Sit back, relax, and enjoy!
               </Text>
               <Text fontSize="sm" color="gray.500">
                 User ID: {user?.id}
