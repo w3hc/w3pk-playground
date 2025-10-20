@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Sign Message',
     description: 'Sign messages with your Ethereum wallet',
     url: 'https://w3pk.w3hc.org/sig',
-    siteName: 'W3PK Playground',
+    siteName: 'w3pk Playground',
     images: [
       {
         url: '/huangshan.png',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'Sign Message | W3PK Playground',
+    title: 'Sign Message | w3pk Playground',
     description: 'Sign messages with your Ethereum wallet',
     images: ['/huangshan.png'],
     creator: '@julienbrg',
