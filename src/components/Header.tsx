@@ -176,9 +176,11 @@ export default function Header() {
                     Sign message
                   </MenuItem>
                 </Link>
-                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
-                  Stealth addresses
-                </MenuItem>
+                <Link href="/stealth" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    Stealth addresses
+                  </MenuItem>
+                </Link>
                 <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
                   Send transaction
                 </MenuItem>

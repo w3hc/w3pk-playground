@@ -10,7 +10,7 @@ import React, {
   useEffect,
 } from 'react'
 import { useToast } from '@chakra-ui/react'
-import { createWeb3Passkey, StealthKeys } from 'w3pk'
+import { createWeb3Passkey, StealthKeys, generateStealthAddress as generateStealthAddressFromMetaAddress } from 'w3pk'
 
 interface W3pkUser {
   id: string
@@ -38,6 +38,11 @@ interface W3pkType {
     stealthPrivateKey: string
     ephemeralPublicKey: string
   } | null>
+  generateStealthAddressFor: (recipientMetaAddress: string) => Promise<{
+    stealthAddress: string
+    ephemeralPublicKey: string
+    viewTag: string
+  } | null>
   getStealthKeys: () => Promise<StealthKeys | null>
 }
 
@@ -46,11 +51,12 @@ const W3PK = createContext<W3pkType>({
   user: null,
   isLoading: false,
   login: async () => {},
-  register: async (username: string) => {},
+  register: async (_username: string) => {},
   logout: () => {},
-  signMessage: async (message: string) => null,
-  deriveWallet: async (index: number) => ({ address: '', privateKey: '' }),
+  signMessage: async (_message: string) => null,
+  deriveWallet: async (_index: number) => ({ address: '', privateKey: '' }),
   generateStealthAddress: async () => null,
+  generateStealthAddressFor: async (_recipientMetaAddress: string) => null,
   getStealthKeys: async () => null,
 })
 
@@ -368,11 +374,66 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       const stealthResult = await w3pk.stealth.generateStealthAddress()
       console.log('Stealth address generated:', stealthResult.stealthAddress)
 
-      return stealthResult
+      if (!stealthResult.stealthPrivateKey) {
+        throw new Error('Stealth private key not generated')
+      }
+
+      return {
+        stealthAddress: stealthResult.stealthAddress,
+        stealthPrivateKey: stealthResult.stealthPrivateKey,
+        ephemeralPublicKey: stealthResult.ephemeralPublicKey,
+      }
     } catch (error: any) {
       console.error('Stealth address generation failed:', error)
       toast({
         title: 'Stealth Address Failed',
+        description: error.message || 'Failed to generate stealth address',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+      return null
+    }
+  }
+
+  const generateStealthAddressFor = async (
+    recipientMetaAddress: string
+  ): Promise<{
+    stealthAddress: string
+    ephemeralPublicKey: string
+    viewTag: string
+  } | null> => {
+    if (!user) {
+      toast({
+        title: 'Not Authenticated',
+        description: 'Please log in first',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+      return null
+    }
+
+    try {
+      console.log('=== Generating Stealth Address for Recipient ===')
+      console.log('Recipient meta-address:', recipientMetaAddress)
+
+      // Call the ERC-5564 compliant generateStealthAddress function with recipient's meta-address
+      const result = generateStealthAddressFromMetaAddress(recipientMetaAddress)
+
+      console.log('Stealth address generated:', result.stealthAddress)
+      console.log('Ephemeral public key:', result.ephemeralPubKey)
+      console.log('View tag:', result.viewTag)
+
+      return {
+        stealthAddress: result.stealthAddress,
+        ephemeralPublicKey: result.ephemeralPubKey,
+        viewTag: result.viewTag,
+      }
+    } catch (error: any) {
+      console.error('Stealth address generation failed:', error)
+      toast({
+        title: 'Generation Failed',
         description: error.message || 'Failed to generate stealth address',
         status: 'error',
         duration: 5000,
@@ -401,12 +462,46 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         throw new Error('Stealth address module not initialized')
       }
 
+      // Ensure fresh authentication for accessing encrypted seed
+      if (!w3pk.isAuthenticated) {
+        console.log('SDK not authenticated, requiring fresh login...')
+        await w3pk.login()
+        console.log('Fresh authentication completed')
+      }
+
       const stealthKeys = await w3pk.stealth.getKeys()
-      console.log('Stealth keys retrieved, meta address:', stealthKeys.metaAddress)
+      console.log('Stealth keys retrieved successfully')
+      // @ts-ignore - stealthMetaAddress is in new ERC-5564 implementation
+      console.log('Meta address:', stealthKeys.stealthMetaAddress || stealthKeys.metaAddress)
 
       return stealthKeys
     } catch (error: any) {
       console.error('Failed to get stealth keys:', error)
+
+      // If it's an auth error, try to login once and retry
+      if (error.message?.includes('Not authenticated') || error.message?.includes('login')) {
+        console.log('Authentication required, prompting for login...')
+        try {
+          await w3pk.login()
+          if (!w3pk.stealth) {
+            throw new Error('Stealth address module not initialized')
+          }
+          const stealthKeys = await w3pk.stealth.getKeys()
+          console.log('Stealth keys retrieved successfully after re-authentication')
+          return stealthKeys
+        } catch (retryError: any) {
+          console.error('Retry after authentication failed:', retryError)
+          toast({
+            title: 'Authentication Required',
+            description: 'Please authenticate to access stealth keys',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          })
+          return null
+        }
+      }
+
       toast({
         title: 'Stealth Keys Failed',
         description: error.message || 'Failed to get stealth keys',
@@ -430,6 +525,7 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         signMessage,
         deriveWallet,
         generateStealthAddress,
+        generateStealthAddressFor,
         getStealthKeys,
       }}
     >
