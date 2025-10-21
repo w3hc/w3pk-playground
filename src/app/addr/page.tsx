@@ -188,14 +188,15 @@ export default function Addresses() {
               Logged in as: <strong>{user?.displayName || user?.username}</strong>
             </Text>
             <Text fontSize="xs" color="gray.500" mb={2}>
-              Primary Address:
+              Primary Address:{' '}
               <Code
                 fontSize="xs"
-                ml={2}
                 cursor="pointer"
                 onClick={() => user?.ethereumAddress && copyAddress(user.ethereumAddress)}
                 _hover={{ bg: 'gray.600' }}
                 title="Click to copy"
+                wordBreak="break-all"
+                whiteSpace="normal"
               >
                 {user?.ethereumAddress}
               </Code>
@@ -242,7 +243,7 @@ export default function Addresses() {
                     justify="space-between"
                     _hover={{ borderColor: 'gray.600' }}
                   >
-                    <Box flex="1">
+                    <Box flex="1" minW="0" mr={3}>
                       <Text fontSize="xs" color="gray.500" mb={1}>
                         Address #{addr.index}
                       </Text>
@@ -252,6 +253,8 @@ export default function Addresses() {
                         onClick={() => copyAddress(addr.address)}
                         _hover={{ bg: 'gray.600' }}
                         title="Click to copy"
+                        wordBreak="break-all"
+                        whiteSpace="normal"
                       >
                         {addr.address}
                       </Code>
@@ -310,7 +313,7 @@ export default function Addresses() {
           </Text>
           <Text fontSize="xs" color="gray.500" mb={3}>
             The signing feature uses your passkey authentication to unlock the encrypted seed and
-            sign messages with the specific derived address's private key.
+            sign messages with the specific derived address&apos;s private key.
           </Text>
           <Text fontSize="xs" color="yellow.300">
             🔒 Security Note: All private keys remain encrypted and never leave your device. Each
