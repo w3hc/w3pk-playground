@@ -2,759 +2,412 @@
 
 import {
   Container,
-  Heading,
-  Text,
   VStack,
   Box,
+  Heading,
+  Text,
   Button,
-  Select,
-  Alert,
-  AlertIcon,
-  AlertDescription,
-  useToast,
-  Spinner as ChakraSpinner,
-  Badge,
-  HStack,
-  Divider,
-  Code,
-  Flex,
-  Icon,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  IconButton,
-  Tooltip,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
   FormControl,
   FormLabel,
   Input,
+  HStack,
+  Badge,
+  useToast,
+  Spinner,
+  Card,
+  CardHeader,
+  CardBody,
+  IconButton,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import Spinner from '@/components/Spinner'
-import { CHAINS, Chain, getEnabledChains } from '@/lib/chains'
-import { SafeStorage, SafeData, SessionKey } from '@/lib/safeStorage'
 import { useState, useEffect } from 'react'
-import {
-  FiCheck,
-  FiClock,
-  FiExternalLink,
-  FiKey,
-  FiRefreshCw,
-  FiDownload,
-  FiCopy,
-} from 'react-icons/fi'
-import { MdAccountBalanceWallet } from 'react-icons/md'
+import { ethers } from 'ethers'
+import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
+import { QRCodeSVG } from 'qrcode.react'
 
-export default function SafePage() {
-  const { isAuthenticated, user, deriveWallet } = useW3PK()
+interface SessionKey {
+  sessionKeyAddress: string
+  sessionKeyIndex: number
+  expiresAt: string
+  permissions: {
+    spendingLimit: string
+    allowedTokens: string[]
+    validAfter: number
+    validUntil: number
+  }
+}
+
+export default function PaymentPage() {
+  const { isAuthenticated, user, deriveWallet, signMessage } = useW3PK()
   const toast = useToast()
 
   // State
-  const [selectedChain, setSelectedChain] = useState<Chain>(CHAINS.gnosis)
-  const [safeData, setSafeData] = useState<SafeData | null>(null)
-  const [isDeploying, setIsDeploying] = useState(false)
-  const [isSendingTx, setIsSendingTx] = useState(false)
-  const [isCreatingSessionKey, setIsCreatingSessionKey] = useState(false)
-  const [isAddingOwner, setIsAddingOwner] = useState(false)
-  const [balance, setBalance] = useState<string>('0')
+  const [safeAddress, setSafeAddress] = useState<string | null>(null)
+  const [safeBalance, setSafeBalance] = useState<string>('0')
+  const [sessionKey, setSessionKey] = useState<SessionKey | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
+  const [isSending, setIsSending] = useState(false)
 
-  // Modal for sending transaction
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const [recipient, setRecipient] = useState('')
-  const [amount, setAmount] = useState('')
+  // Send form
+  const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+  const [amount, setAmount] = useState('0.001')
 
-  // Load Safe data when user or chain changes
+  // Check if session key is expired
+  const isSessionKeyExpired = sessionKey
+    ? Date.now() > sessionKey.permissions.validUntil * 1000
+    : false
+
+  // Load saved Safe data from localStorage
   useEffect(() => {
-    if (user?.ethereumAddress) {
-      loadSafeData()
-    }
-  }, [user?.ethereumAddress, selectedChain])
-
-  const loadSafeData = () => {
-    if (!user?.ethereumAddress) return
-
-    const data = SafeStorage.getSafeData(user.ethereumAddress, selectedChain.id)
-
-    // Validate Safe address format (must be 42 chars: 0x + 40 hex)
-    if (data && !/^0x[a-fA-F0-9]{40}$/.test(data.safeAddress)) {
-      console.warn('⚠️  Invalid Safe address detected, clearing data:', data.safeAddress)
-      // Clear invalid data for this chain
-      const allData = SafeStorage.getData(user.ethereumAddress)
-      if (allData?.safes) {
-        delete allData.safes[selectedChain.id]
-        localStorage.setItem(
-          `w3pk_safe_${user.ethereumAddress.toLowerCase()}`,
-          JSON.stringify(allData)
-        )
+    if (isAuthenticated && user) {
+      const saved = localStorage.getItem(`safe_${user.id}`)
+      if (saved) {
+        const data = JSON.parse(saved)
+        setSafeAddress(data.safeAddress)
+        if (data.sessionKey) {
+          setSessionKey(data.sessionKey)
+        }
       }
-      setSafeData(null)
-      return
     }
+  }, [isAuthenticated, user])
 
-    setSafeData(data)
-
-    if (data) {
-      // Load balance
-      setBalance(data.lastBalance)
-      fetchBalance(data.safeAddress)
+  // Load Safe balance
+  useEffect(() => {
+    if (safeAddress) {
+      loadBalance()
     }
-  }
+  }, [safeAddress])
 
-  const fetchBalance = async (safeAddress: string) => {
+  const loadBalance = async () => {
+    if (!safeAddress) return
     setIsLoadingBalance(true)
+
     try {
       const response = await fetch('/api/safe/balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           safeAddress,
-          chainId: selectedChain.id,
+          chainId: 10200, // Gnosis Chiado
         }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setBalance(data.balance)
-
-        // Update storage
-        if (user?.ethereumAddress) {
-          SafeStorage.updateBalance(user.ethereumAddress, selectedChain.id, data.balance)
-        }
+      const data = await response.json()
+      if (data.success) {
+        setSafeBalance(data.balance)
       }
     } catch (error) {
-      console.error('Error fetching balance:', error)
+      console.error('Error loading balance:', error)
     } finally {
       setIsLoadingBalance(false)
     }
   }
 
-  const handleDeploySafe = async () => {
-    if (!user?.ethereumAddress) return
-
-    setIsDeploying(true)
-    try {
-      const response = await fetch('/api/safe/deploy-safe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: user.ethereumAddress,
-          chainId: selectedChain.id,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to deploy Safe')
-      }
-
-      // Save to storage
-      const newSafeData: SafeData = {
-        safeAddress: data.safeAddress,
-        deployedAt: new Date().toISOString(),
-        deploymentTxHash: data.txHash,
-        sessionKeys: [],
-        lastBalance: '0',
-        lastChecked: new Date().toISOString(),
-      }
-
-      SafeStorage.saveSafe(user.ethereumAddress, selectedChain.id, newSafeData)
-      setSafeData(newSafeData)
-
+  const sendTransaction = async () => {
+    if (!safeAddress || !sessionKey || !recipient || !amount) {
       toast({
-        title: 'Safe Deployed!',
-        description: `Your Safe wallet has been deployed at ${data.safeAddress}`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      })
-
-      // Wait a bit then check balance
-      setTimeout(() => fetchBalance(data.safeAddress), 3000)
-    } catch (error: any) {
-      console.error('Error deploying Safe:', error)
-      toast({
-        title: 'Deployment Failed',
-        description: error.message || 'Failed to deploy Safe wallet',
+        title: 'Error',
+        description: 'Please fill in all fields and create a session key first',
         status: 'error',
         duration: 5000,
-        isClosable: true,
       })
-    } finally {
-      setIsDeploying(false)
+      return
     }
-  }
 
-  const handleCreateSessionKey = async () => {
-    if (!user?.ethereumAddress || !safeData) return
-
-    setIsCreatingSessionKey(true)
-    try {
-      const response = await fetch('/api/safe/create-session-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: user.ethereumAddress,
-          safeAddress: safeData.safeAddress,
-          chainId: selectedChain.id,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create session key')
-      }
-
-      // Add to storage
-      const newSessionKey: SessionKey = {
-        keyAddress: data.sessionKeyAddress,
-        createdAt: new Date().toISOString(),
-        expiresAt: data.expiresAt,
-        permissions: data.permissions,
-        isActive: true,
-      }
-
-      SafeStorage.addSessionKey(user.ethereumAddress, selectedChain.id, newSessionKey)
-
-      // Reload data
-      loadSafeData()
-
+    if (isSessionKeyExpired) {
       toast({
-        title: 'Session Key Created!',
-        description: 'You can now send transactions without signing each time',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      })
-    } catch (error: any) {
-      console.error('Error creating session key:', error)
-      toast({
-        title: 'Failed to Create Session Key',
-        description: error.message,
+        title: 'Session Key Expired',
+        description: 'Please create a new session key on the /safe page',
         status: 'error',
         duration: 5000,
-        isClosable: true,
       })
-    } finally {
-      setIsCreatingSessionKey(false)
+      return
     }
-  }
 
-  const handleSendTransaction = async () => {
-    if (!user?.ethereumAddress || !safeData || !recipient || !amount) return
+    setIsSending(true)
 
-    setIsSendingTx(true)
     try {
+      // Prepare transaction data
+      const txData = {
+        to: recipient,
+        value: ethers.parseEther(amount).toString(),
+        data: '0x',
+      }
+
+      // Derive the session key wallet to sign the transaction
+      const sessionKeyWallet = await deriveWallet(sessionKey.sessionKeyIndex)
+
+      // Sign with the session key's private key
+      const message = JSON.stringify(txData)
+      const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
+      const signature = await sessionKeySigner.signMessage(message)
+
+      // Get derived addresses for userAddress
+      const wallet0 = await deriveWallet(0)
+
+      // Send to backend
       const response = await fetch('/api/safe/send-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: user.ethereumAddress,
-          safeAddress: safeData.safeAddress,
-          chainId: selectedChain.id,
+          userAddress: wallet0.address,
+          safeAddress,
+          chainId: 10200,
           to: recipient,
-          amount: amount,
+          amount: txData.value,
+          sessionKeyAddress: sessionKey.sessionKeyAddress,
+          sessionKeyValidUntil: sessionKey.permissions.validUntil,
+          signature,
         }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send transaction')
+      if (data.success) {
+        toast({
+          title: 'Transaction Sent!',
+          description: `Tx: ${data.txHash.slice(0, 20)}...`,
+          status: 'success',
+          duration: 10000,
+        })
+
+        // Clear form
+        setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+        setAmount('0.001')
+
+        // Reload balance
+        setTimeout(() => loadBalance(), 3000)
+      } else {
+        throw new Error(data.error || 'Transaction failed')
       }
-
-      toast({
-        title: 'Transaction Sent!',
-        description: `Successfully sent ${amount} tokens`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      })
-
-      // Reset form and close modal
-      setRecipient('')
-      setAmount('')
-      onClose()
-
-      // Refresh balance
-      setTimeout(() => fetchBalance(safeData.safeAddress), 3000)
     } catch (error: any) {
-      console.error('Error sending transaction:', error)
       toast({
         title: 'Transaction Failed',
         description: error.message,
         status: 'error',
-        duration: 5000,
-        isClosable: true,
+        duration: 8000,
       })
     } finally {
-      setIsSendingTx(false)
+      setIsSending(false)
     }
   }
 
-  const handleAddRelayerAsOwner = async () => {
-    if (!user?.ethereumAddress || !safeData) return
-
-    setIsAddingOwner(true)
-    try {
-      // Derive wallet at index 0 to get private key
-      const wallet = await deriveWallet(0)
-
-      const response = await fetch('/api/safe/add-owner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          safeAddress: safeData.safeAddress,
-          chainId: selectedChain.id,
-          userPrivateKey: wallet.privateKey,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add relayer as owner')
-      }
-
-      toast({
-        title: 'Relayer Added as Owner!',
-        description: 'The relayer can now execute transactions on your behalf',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      })
-    } catch (error: any) {
-      console.error('Error adding relayer as owner:', error)
-      toast({
-        title: 'Failed to Add Owner',
-        description: error.message,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
-    } finally {
-      setIsAddingOwner(false)
-    }
-  }
-
-  const handleExportData = () => {
-    if (!user?.ethereumAddress) return
-
-    const exportData = SafeStorage.exportData(user.ethereumAddress)
-    const blob = new Blob([exportData], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `safe-backup-${user.ethereumAddress}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
     toast({
-      title: 'Backup Downloaded',
-      description: 'Your Safe data has been exported',
+      title: 'Copied!',
+      description: 'Address copied to clipboard',
       status: 'success',
-      duration: 3000,
-      isClosable: true,
+      duration: 2000,
     })
   }
 
-  // Show spinner while checking authentication
   if (!isAuthenticated) {
     return (
-      <Container maxW="container.md" py={8}>
-        <VStack spacing={8}>
-          <Spinner size="100px" />
-          <Text>Please log in to access Safe wallet features</Text>
-        </VStack>
+      <Container maxW="container.md" py={20}>
+        <Box textAlign="center">
+          <Heading mb={4}>Please Login</Heading>
+          <Text color="gray.400">You need to be authenticated to use payment features</Text>
+        </Box>
       </Container>
     )
   }
 
-  const hasSafe = !!safeData
-  const activeSessionKeys = safeData?.sessionKeys.filter(key => key.isActive) || []
+  if (!safeAddress) {
+    return (
+      <Container maxW="container.md" py={20}>
+        <Box textAlign="center">
+          <Heading mb={4}>No Safe Wallet</Heading>
+          <Text color="gray.400" mb={6}>
+            Please deploy a Safe wallet first on the /safe page
+          </Text>
+          <Button as="a" href="/safe" colorScheme="purple">
+            Go to Safe Dashboard
+          </Button>
+        </Box>
+      </Container>
+    )
+  }
 
   return (
-    <Container maxW="container.lg" py={8}>
+    <Container maxW="container.md" py={10}>
       <VStack spacing={8} align="stretch">
         {/* Header */}
-        <Box>
-          <Heading size="xl" mb={2}>
-            Safe Smart Wallet
+        <Box textAlign="center">
+          <Heading as="h1" size="xl" mb={2}>
+            Payment
           </Heading>
-          <Text color="gray.400">
-            Deploy a Safe wallet and enable gasless transactions with session keys
-          </Text>
+          <Text color="gray.400">Send and receive xDAI</Text>
         </Box>
 
-        {/* Network Selector */}
-        <Box>
-          <FormControl>
-            <FormLabel>Select Network</FormLabel>
-            <Select
-              value={selectedChain.name}
-              onChange={e => {
-                const chain = Object.values(CHAINS).find(c => c.name === e.target.value)
-                if (chain) setSelectedChain(chain)
-              }}
-            >
-              {Object.values(CHAINS).map(chain => (
-                <option key={chain.id} value={chain.name} disabled={!chain.enabled}>
-                  {chain.name} {!chain.enabled && ''}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
-
-          {selectedChain && (
-            <HStack mt={2} spacing={2}>
-              <Badge colorScheme="green">Testnet</Badge>
-              <Text fontSize="sm" color="gray.400">
-                Chain ID: {selectedChain.id}
-              </Text>
-            </HStack>
-          )}
-        </Box>
-
-        {/* Info Box */}
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
-          <AlertDescription>
-            💾 Safe data is stored locally in your browser. Use the export button to backup your
-            data.
-          </AlertDescription>
-        </Alert>
-
-        {/* Main Content */}
-        {!hasSafe ? (
-          /* Deployment Flow */
-          <Box borderWidth="1px" borderRadius="lg" p={6}>
-            <VStack spacing={6} align="stretch">
-              <Box>
-                <Heading size="md" mb={2}>
-                  Deploy Your Safe Wallet
-                </Heading>
-                <Text color="gray.400">
-                  Create a smart contract wallet controlled by your W3PK key. This enables:
+        {/* Send Block */}
+        <Card bg="gray.800" borderColor="gray.700">
+          <CardHeader>
+            <HStack justify="space-between">
+              <Heading size="md">Send xDAI</Heading>
+              <HStack>
+                <Text fontSize="sm" color="gray.400">
+                  Balance:
                 </Text>
-              </Box>
-
-              <VStack align="stretch" spacing={3} pl={4}>
-                <HStack>
-                  <Icon as={FiCheck} color="green.400" />
-                  <Text>Account abstraction features</Text>
-                </HStack>
-                <HStack>
-                  <Icon as={FiCheck} color="green.400" />
-                  <Text>Session keys for gasless transactions</Text>
-                </HStack>
-                <HStack>
-                  <Icon as={FiCheck} color="green.400" />
-                  <Text>Multi-signature support (future)</Text>
-                </HStack>
-              </VStack>
-
-              <Button
-                colorScheme="blue"
-                size="lg"
-                onClick={handleDeploySafe}
-                isLoading={isDeploying}
-                loadingText="Deploying Safe..."
-                leftIcon={<MdAccountBalanceWallet />}
-              >
-                Deploy Safe on {selectedChain.name}
-              </Button>
-
-              <Text fontSize="sm" color="gray.500">
-                Deployment is gasless - our relayer will handle the transaction
-              </Text>
-            </VStack>
-          </Box>
-        ) : (
-          /* Safe Dashboard */
-          <VStack spacing={6} align="stretch">
-            {/* Safe Info Card */}
-            <Box borderWidth="1px" borderRadius="lg" p={6}>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Heading size="md">Your Safe Wallet</Heading>
-                  <Badge colorScheme="green" fontSize="md">
-                    Active
-                  </Badge>
-                </HStack>
-
-                <Divider />
-
-                <VStack align="stretch" spacing={3}>
-                  <VStack align="stretch" spacing={2}>
-                    <Text fontWeight="bold">Safe Address:</Text>
-                    <HStack>
-                      <Code fontSize="sm" flex={1} p={2}>
-                        {safeData.safeAddress}
-                      </Code>
-                      <IconButton
-                        aria-label="Copy address"
-                        icon={<FiCopy />}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          navigator.clipboard.writeText(safeData.safeAddress)
-                          toast({
-                            title: 'Copied!',
-                            description: 'Safe address copied to clipboard',
-                            status: 'success',
-                            duration: 2000,
-                            isClosable: true,
-                          })
-                        }}
-                      />
-                      <IconButton
-                        aria-label="View on explorer"
-                        icon={<FiExternalLink />}
-                        size="sm"
-                        variant="ghost"
-                        as="a"
-                        href={`${selectedChain.blockExplorer}/address/${safeData.safeAddress}`}
-                        target="_blank"
-                      />
-                    </HStack>
-                  </VStack>
-
-                  <HStack justify="space-between">
-                    <Text fontWeight="bold">Balance:</Text>
-                    <HStack>
-                      <Text>
-                        {(parseInt(balance) / 1e18).toFixed(4)}{' '}
-                        {selectedChain.nativeCurrency.symbol}
-                      </Text>
-                      <IconButton
-                        aria-label="Refresh balance"
-                        icon={<FiRefreshCw />}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => fetchBalance(safeData.safeAddress)}
-                        isLoading={isLoadingBalance}
-                      />
-                    </HStack>
-                  </HStack>
-
-                  <HStack justify="space-between">
-                    <Text fontWeight="bold">Deployed:</Text>
-                    <Text fontSize="sm" color="gray.400">
-                      {new Date(safeData.deployedAt).toLocaleDateString()}
+                {isLoadingBalance ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <HStack spacing={1}>
+                    <Text fontFamily="mono" fontWeight="bold">
+                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(6)}
                     </Text>
+                    <IconButton
+                      aria-label="Refresh balance"
+                      icon={<FiRefreshCw />}
+                      size="xs"
+                      variant="ghost"
+                      onClick={loadBalance}
+                    />
                   </HStack>
-
-                  <HStack justify="space-between">
-                    <Text fontWeight="bold">Session Keys:</Text>
-                    <Badge colorScheme={activeSessionKeys.length > 0 ? 'green' : 'gray'}>
-                      {activeSessionKeys.length} Active
+                )}
+              </HStack>
+            </HStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              {/* Session Key Status */}
+              {sessionKey ? (
+                <Box>
+                  <HStack justify="space-between" mb={2}>
+                    <Text fontSize="sm" color="gray.400">
+                      Session Key:
+                    </Text>
+                    <Badge colorScheme={isSessionKeyExpired ? 'red' : 'green'}>
+                      {isSessionKeyExpired ? 'Expired' : 'Active'}
                     </Badge>
                   </HStack>
-                </VStack>
-
-                <Divider />
-
-                {/* Warning if relayer is not an owner */}
+                  <Text fontSize="sm" color="gray.400">
+                    Expires: {new Date(sessionKey.expiresAt).toLocaleString()}
+                  </Text>
+                  {isSessionKeyExpired && (
+                    <Alert status="error" mt={3} borderRadius="md">
+                      <AlertIcon />
+                      <Box>
+                        <AlertTitle>Session Key Expired</AlertTitle>
+                        <AlertDescription fontSize="sm">
+                          Go to /safe to create a new session key
+                        </AlertDescription>
+                      </Box>
+                    </Alert>
+                  )}
+                </Box>
+              ) : (
                 <Alert status="warning" borderRadius="md">
                   <AlertIcon />
-                  <VStack align="stretch" spacing={2} flex={1}>
-                    <AlertDescription>
-                      ⚠️ Your Safe needs the relayer as an owner to send transactions. Click below
-                      to enable gasless transactions.
-                    </AlertDescription>
-                    <Button
-                      size="sm"
-                      colorScheme="orange"
-                      onClick={handleAddRelayerAsOwner}
-                      isLoading={isAddingOwner}
-                      loadingText="Adding Relayer..."
-                    >
-                      Add Relayer as Owner
-                    </Button>
-                  </VStack>
-                </Alert>
-
-                <HStack spacing={3}>
-                  <Button
-                    colorScheme="blue"
-                    onClick={onOpen}
-                    isDisabled={parseInt(balance) === 0}
-                    flex={1}
-                  >
-                    Send Transaction
-                  </Button>
-                  <Button variant="outline" onClick={handleExportData} leftIcon={<FiDownload />}>
-                    Export
-                  </Button>
-                </HStack>
-              </VStack>
-            </Box>
-
-            {/* Session Keys Section */}
-            <Box borderWidth="1px" borderRadius="lg" p={6}>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
                   <Box>
-                    <Heading size="md" mb={1}>
-                      Session Keys
-                    </Heading>
-                    <Text fontSize="sm" color="gray.400">
-                      Enable gasless transactions without signing each time
-                    </Text>
-                  </Box>
-                  <Button
-                    colorScheme="purple"
-                    onClick={handleCreateSessionKey}
-                    isLoading={isCreatingSessionKey}
-                    leftIcon={<FiKey />}
-                    size="sm"
-                  >
-                    Create Session Key
-                  </Button>
-                </HStack>
-
-                {safeData.sessionKeys.length > 0 ? (
-                  <Box overflowX="auto">
-                    <Table variant="simple" size="sm">
-                      <Thead>
-                        <Tr>
-                          <Th>Address</Th>
-                          <Th>Status</Th>
-                          <Th>Expires</Th>
-                          <Th>Spending Limit</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {safeData.sessionKeys.map((key, idx) => (
-                          <Tr key={idx}>
-                            <Td>
-                              <Code fontSize="xs">
-                                {key.keyAddress.slice(0, 6)}...{key.keyAddress.slice(-4)}
-                              </Code>
-                            </Td>
-                            <Td>
-                              <Badge colorScheme={key.isActive ? 'green' : 'gray'}>
-                                {key.isActive ? 'Active' : 'Inactive'}
-                              </Badge>
-                            </Td>
-                            <Td fontSize="xs">{new Date(key.expiresAt).toLocaleDateString()}</Td>
-                            <Td fontSize="xs">
-                              {(parseInt(key.permissions.spendingLimit) / 1e18).toFixed(2)}
-                            </Td>
-                          </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  </Box>
-                ) : (
-                  <Alert status="info">
-                    <AlertIcon />
-                    <AlertDescription>
-                      No session keys yet. Create one to enable gasless transactions!
+                    <AlertTitle>No Session Key</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      Create a session key on /safe to send transactions
                     </AlertDescription>
-                  </Alert>
-                )}
-              </VStack>
-            </Box>
-
-            {/* Comparison Panel */}
-            <Box borderWidth="1px" borderRadius="lg" p={6} bg="gray.900">
-              <Heading size="sm" mb={4}>
-                💡 Traditional Wallet vs W3PK + Safe
-              </Heading>
-              <HStack spacing={8} align="start">
-                <VStack align="stretch" flex={1} spacing={2}>
-                  <Text fontWeight="bold" fontSize="sm">
-                    Traditional Wallet
-                  </Text>
-                  <Text fontSize="xs" color="gray.400">
-                    ❌ Signature needed for every transaction
-                  </Text>
-                  <Text fontSize="xs" color="gray.400">
-                    ❌ Must pay gas fees
-                  </Text>
-                  <Text fontSize="xs" color="gray.400">
-                    ❌ Limited to EOA features
-                  </Text>
-                </VStack>
-                <VStack align="stretch" flex={1} spacing={2}>
-                  <Text fontWeight="bold" fontSize="sm" color="blue.300">
-                    W3PK + Safe
-                  </Text>
-                  <Text fontSize="xs" color="green.300">
-                    ✅ One signature to deploy
-                  </Text>
-                  <Text fontSize="xs" color="green.300">
-                    ✅ Gasless transactions via relayer
-                  </Text>
-                  <Text fontSize="xs" color="green.300">
-                    ✅ Smart wallet capabilities
-                  </Text>
-                </VStack>
-              </HStack>
-            </Box>
-          </VStack>
-        )}
-      </VStack>
-
-      {/* Send Transaction Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Send Transaction</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <VStack spacing={4}>
-              {activeSessionKeys.length > 0 && (
-                <Alert status="success" fontSize="sm">
-                  <AlertIcon />
-                  <AlertDescription>Using session key - no signature required!</AlertDescription>
+                  </Box>
                 </Alert>
               )}
 
-              <FormControl isRequired>
+              {/* Send Form */}
+              <FormControl>
                 <FormLabel>Recipient Address</FormLabel>
                 <Input
                   placeholder="0x..."
                   value={recipient}
-                  onChange={e => setRecipient(e.target.value)}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  fontFamily="mono"
+                  isDisabled={!sessionKey || isSessionKeyExpired}
                 />
               </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel>Amount (in wei)</FormLabel>
+              <FormControl>
+                <FormLabel>Amount (xDAI)</FormLabel>
                 <Input
                   type="number"
-                  placeholder="1000000"
+                  step="0.001"
+                  placeholder="0.01"
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  onChange={(e) => setAmount(e.target.value)}
+                  isDisabled={!sessionKey || isSessionKeyExpired}
                 />
               </FormControl>
 
               <Button
-                colorScheme="blue"
-                width="100%"
-                onClick={handleSendTransaction}
-                isLoading={isSendingTx}
-                isDisabled={!recipient || !amount}
+                colorScheme="purple"
+                size="lg"
+                onClick={sendTransaction}
+                isLoading={isSending}
+                loadingText="Sending..."
+                leftIcon={<FiSend />}
+                isDisabled={!recipient || !amount || !sessionKey || isSessionKeyExpired}
               >
-                Send Transaction
+                Send Transaction (Gasless)
               </Button>
+
+              <Text fontSize="sm" color="gray.500" textAlign="center">
+                No gas fees • Powered by session keys
+              </Text>
             </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+          </CardBody>
+        </Card>
+
+        {/* Receive Block */}
+        <Card bg="gray.800" borderColor="gray.700">
+          <CardHeader>
+            <Heading size="md">Receive xDAI</Heading>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <Text color="gray.400" fontSize="sm">
+                Send xDAI to your Safe wallet address:
+              </Text>
+
+              {/* QR Code */}
+              <Box bg="white" p={4} borderRadius="md" alignSelf="center">
+                <QRCodeSVG value={safeAddress} size={200} level="H" />
+              </Box>
+
+              {/* Address */}
+              <Box>
+                <Text fontSize="sm" color="gray.400" mb={2}>
+                  Safe Address:
+                </Text>
+                <HStack>
+                  <Input
+                    value={safeAddress}
+                    isReadOnly
+                    fontFamily="mono"
+                    fontSize="sm"
+                    bg="gray.900"
+                  />
+                  <IconButton
+                    aria-label="Copy address"
+                    icon={<FiCopy />}
+                    onClick={() => copyToClipboard(safeAddress)}
+                    colorScheme="purple"
+                    variant="outline"
+                  />
+                </HStack>
+              </Box>
+
+              <Text fontSize="sm" color="gray.500" textAlign="center">
+                Scan QR code or copy address to receive funds
+              </Text>
+            </VStack>
+          </CardBody>
+        </Card>
+
+        {/* Quick Link */}
+        <Box textAlign="center">
+          <Button as="a" href="/safe" variant="link" size="sm" color="gray.500">
+            Go to Safe Dashboard →
+          </Button>
+        </Box>
+      </VStack>
     </Container>
   )
 }

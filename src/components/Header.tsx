@@ -188,7 +188,12 @@ export default function Header() {
                 </Link>
                 <Link href="/tx" color="white">
                   <MenuItem fontSize="md" px={4} py={3}>
-                    Send transaction
+                    Send & receive
+                  </MenuItem>
+                </Link>
+                <Link href="/safe" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    Safe dashboard
                   </MenuItem>
                 </Link>
               </MenuList>

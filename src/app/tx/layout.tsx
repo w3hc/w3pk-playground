@@ -1,12 +1,12 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Safe Wallet',
-  description: 'Deploy and manage your Safe smart wallet with session keys',
+  title: 'Payment',
+  description: 'Send and receive xDAI with your Safe wallet',
 
   openGraph: {
-    title: 'Safe Wallet | W3PK Playground',
-    description: 'Deploy and manage your Safe smart wallet with session keys',
+    title: 'Payment | W3PK Playground',
+    description: 'Send and receive xDAI with your Safe wallet',
     url: 'https://w3pk.w3hc.org/tx',
     siteName: 'w3pk Playground',
     images: [
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
         url: '/huangshan.png',
         width: 1200,
         height: 630,
-        alt: 'Deploy and manage your Safe smart wallet',
+        alt: 'Send and receive xDAI',
       },
     ],
     locale: 'en_US',
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'Safe Wallet | W3PK Playground',
-    description: 'Deploy and manage your Safe smart wallet with session keys',
+    title: 'Payment | W3PK Playground',
+    description: 'Send and receive xDAI with your Safe wallet',
     images: ['/huangshan.png'],
     creator: '@julienbrg',
   },
