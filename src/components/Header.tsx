@@ -181,17 +181,13 @@ export default function Header() {
                     Stealth addresses
                   </MenuItem>
                 </Link>
+                <Link href="/networks" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    RPC endpoints
+                  </MenuItem>
+                </Link>
                 <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
                   Send transaction
-                </MenuItem>
-                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
-                  ZK proofs
-                </MenuItem>
-                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
-                  EIP-7702
-                </MenuItem>
-                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
-                  Examples
                 </MenuItem>
               </MenuList>
             </Menu>

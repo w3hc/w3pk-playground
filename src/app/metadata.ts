@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
 
   keywords: ['w3pk', 'WebAuthn', 'Next.js', 'Web3', 'Ethereum'],
-  authors: [{ name: 'Julien', url: 'https://github.com/julienbrg' }],
+  authors: [{ name: 'W3HC', url: 'https://github.com/w3hc' }],
 
   openGraph: {
     title: 'w3pk Playground',
