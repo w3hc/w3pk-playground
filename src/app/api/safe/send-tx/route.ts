@@ -15,7 +15,7 @@ import Safe from '@safe-global/protocol-kit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature } = body
+    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature, sessionKeyValidUntil } = body
 
     // Validation
     if (!userAddress || !safeAddress || !chainId || !to || !amount || !sessionKeyAddress) {
@@ -25,6 +25,20 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    // Validate session key expiration
+    if (sessionKeyValidUntil) {
+      const now = Math.floor(Date.now() / 1000)
+      if (now > sessionKeyValidUntil) {
+        return NextResponse.json(
+          {
+            error: 'Session key has expired',
+            details: `Session key expired at ${new Date(sessionKeyValidUntil * 1000).toISOString()}. Please create a new session key.`,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Session key signature is required for all transactions
@@ -85,13 +99,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Verify session key signature and permissions
-    // 1. Verify the signature is from the sessionKeyAddress
-    // 2. Check session key is enabled on the Safe
-    // 3. Validate spending limits and expiry
-    // 4. Execute transaction through Session Keys Module
+    // Session Key Validation:
+    // ✅ 1. Verify the signature is from the sessionKeyAddress
+    // ✅ 2. Validate session key expiry (implemented above)
+    // TODO: 3. Check session key is enabled on the Safe
+    // TODO: 4. Validate spending limits
+    // TODO: 5. Execute transaction through Session Keys Module
     //
-    // For now, we'll verify signature and execute via relayer (who pays gas)
+    // For now, we verify signature and expiry, then execute via relayer (who pays gas)
     // In production, this would go through the Session Keys Module
 
     // Verify signature is from session key address

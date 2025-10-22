@@ -59,8 +59,13 @@ export default function SafePage() {
   const [moduleEnableTxData, setModuleEnableTxData] = useState<any>(null)
 
   // Send transaction form
-  const [recipient, setRecipient] = useState('')
-  const [amount, setAmount] = useState('')
+  const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+  const [amount, setAmount] = useState('0.001')
+
+  // Check if session key is expired
+  const isSessionKeyExpired = sessionKey
+    ? Date.now() > sessionKey.permissions.validUntil * 1000
+    : false
 
   // Load saved Safe address from localStorage
   useEffect(() => {
@@ -387,6 +392,7 @@ export default function SafePage() {
           to: recipient,
           amount: txData.value,
           sessionKeyAddress: sessionKey.sessionKeyAddress,
+          sessionKeyValidUntil: sessionKey.permissions.validUntil,
           signature,
         }),
       })
@@ -484,15 +490,15 @@ export default function SafePage() {
               </VStack>
             ) : (
               <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Safe Address:</Text>
+                <Box>
+                  <Text fontWeight="bold" mb={2}>Safe Address:</Text>
                   <HStack>
                     <Text fontFamily="mono" fontSize="sm">
-                      {safeAddress.slice(0, 20)}...
+                      {safeAddress}
                     </Text>
                     <Badge colorScheme="green">Active</Badge>
                   </HStack>
-                </HStack>
+                </Box>
 
                 <HStack justify="space-between">
                   <Text fontWeight="bold">Balance:</Text>
@@ -501,7 +507,7 @@ export default function SafePage() {
                       <Spinner size="sm" />
                     ) : (
                       <>
-                        <Text fontFamily="mono">{ethers.formatEther(safeBalance)} xDAI</Text>
+                        <Text fontFamily="mono">{parseFloat(ethers.formatEther(safeBalance)).toFixed(6)} xDAI</Text>
                         <Button size="xs" onClick={loadBalance} variant="ghost">
                           Refresh
                         </Button>
@@ -510,12 +516,12 @@ export default function SafePage() {
                   </HStack>
                 </HStack>
 
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Owner:</Text>
+                <Box>
+                  <Text fontWeight="bold" mb={2}>Owner:</Text>
                   <Text fontFamily="mono" fontSize="sm">
-                    {derivedAddresses[0]?.slice(0, 20)}...
+                    {derivedAddresses[0]}
                   </Text>
-                </HStack>
+                </Box>
               </VStack>
             )}
           </CardBody>
@@ -557,7 +563,7 @@ export default function SafePage() {
                       </Button>
 
                       <Text fontSize="sm" color="gray.500">
-                        This is a one-time setup. You'll sign with your passkey.
+                        This is a one-time setup. You&apos;ll sign with your passkey.
                       </Text>
                     </>
                   ) : (
@@ -636,18 +642,30 @@ export default function SafePage() {
                       borderColor="gray.700"
                     >
                       <HStack mb={2}>
-                        <Icon as={FiCheckCircle} color="purple.400" />
+                        <Icon as={FiCheckCircle} color={isSessionKeyExpired ? "red.400" : "purple.400"} />
                         <Text fontSize="sm" fontWeight="bold">
                           Status
                         </Text>
                       </HStack>
-                      <Badge colorScheme="green" fontSize="md">
-                        Active
+                      <Badge colorScheme={isSessionKeyExpired ? "red" : "green"} fontSize="md">
+                        {isSessionKeyExpired ? "Expired" : "Active"}
                       </Badge>
                     </Box>
                   </SimpleGrid>
 
                   <Divider />
+
+                  {isSessionKeyExpired && (
+                    <Alert status="error" bg="red.900" borderRadius="md">
+                      <AlertIcon />
+                      <Box flex="1">
+                        <AlertTitle>Session Key Expired</AlertTitle>
+                        <AlertDescription fontSize="sm">
+                          This session key has expired. Create a new one to continue making transactions.
+                        </AlertDescription>
+                      </Box>
+                    </Alert>
+                  )}
 
                   <Box>
                     <Text fontSize="sm" color="gray.500" mb={1}>
@@ -657,6 +675,19 @@ export default function SafePage() {
                       {sessionKey.sessionKeyAddress}
                     </Text>
                   </Box>
+
+                  {isSessionKeyExpired && (
+                    <Button
+                      colorScheme="purple"
+                      size="lg"
+                      onClick={createSessionKey}
+                      isLoading={isCreatingSession}
+                      loadingText="Creating New Session Key..."
+                      leftIcon={<FiKey />}
+                    >
+                      Create New Session Key
+                    </Button>
+                  )}
                 </VStack>
               )}
             </CardBody>
@@ -702,10 +733,19 @@ export default function SafePage() {
                   isLoading={isSending}
                   loadingText="Sending Transaction..."
                   leftIcon={<FiSend />}
-                  isDisabled={!recipient || !amount}
+                  isDisabled={!recipient || !amount || isSessionKeyExpired}
                 >
                   Send Transaction (Gasless)
                 </Button>
+
+                {isSessionKeyExpired && (
+                  <Alert status="warning" bg="orange.900" borderRadius="md">
+                    <AlertIcon />
+                    <Text fontSize="sm">
+                      Your session key has expired. Please create a new one above to send transactions.
+                    </Text>
+                  </Alert>
+                )}
 
                 <Alert status="info" bg="blue.900" borderRadius="md">
                   <AlertIcon />
