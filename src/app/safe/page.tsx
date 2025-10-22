@@ -290,7 +290,10 @@ export default function SafePage() {
     setIsEnablingModule(true)
 
     try {
-      // User signs the transaction data with W3PK
+      // Derive wallet at index 0 to get the owner's private key
+      const ownerWallet = await deriveWallet(0)
+
+      // User signs the transaction data with W3PK for verification
       const message = JSON.stringify({
         to: moduleEnableTxData.to,
         data: moduleEnableTxData.data,
@@ -304,7 +307,7 @@ export default function SafePage() {
       }
 
       // Execute the enableModule transaction through Safe
-      // Send to a new API endpoint that executes Safe transactions
+      // Send to API endpoint that executes Safe transactions
       const response = await fetch('/api/safe/execute-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -314,6 +317,7 @@ export default function SafePage() {
           data: moduleEnableTxData.data,
           value: moduleEnableTxData.value,
           signature,
+          userPrivateKey: ownerWallet.privateKey,
           chainId: 10200,
         }),
       })
@@ -381,6 +385,9 @@ export default function SafePage() {
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
       const signature = await sessionKeySigner.signMessage(message)
 
+      // Derive the owner wallet (index 0) to sign the Safe transaction
+      const ownerWallet = await deriveWallet(0)
+
       // Send to backend
       const response = await fetch('/api/safe/send-tx', {
         method: 'POST',
@@ -393,6 +400,7 @@ export default function SafePage() {
           amount: txData.value,
           sessionKeyAddress: sessionKey.sessionKeyAddress,
           sessionKeyValidUntil: sessionKey.permissions.validUntil,
+          userPrivateKey: ownerWallet.privateKey,
           signature,
         }),
       })

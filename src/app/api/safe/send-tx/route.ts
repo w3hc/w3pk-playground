@@ -15,7 +15,7 @@ import Safe from '@safe-global/protocol-kit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature, sessionKeyValidUntil } = body
+    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature, sessionKeyValidUntil, userPrivateKey } = body
 
     // Validation
     if (!userAddress || !safeAddress || !chainId || !to || !amount || !sessionKeyAddress) {
@@ -130,17 +130,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Signature verified from session key ${sessionKeyAddress}`)
 
-    // Create Safe transaction signed by the session key
+    // Check if we have the user's private key (needed for signing as owner)
+    if (!userPrivateKey) {
+      return NextResponse.json(
+        {
+          error: 'User private key required',
+          details: 'The user must provide their private key to sign this transaction as the Safe owner',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Create Safe transaction signed by the user (the owner)
     // NOTE: In full implementation, this would be executed via Session Keys Module
-    // For now, we verify the session key signature above and relayer submits it (pays gas)
-    const protocolKit = await Safe.init({
+    // For now, we verify the session key signature above and user signs the Safe transaction
+    const userProtocolKit = await Safe.init({
       provider: rpcUrl,
-      signer: process.env.RELAYER_PRIVATE_KEY!,
+      signer: userPrivateKey,
       safeAddress: safeAddress,
     })
 
     // Create transaction
-    const safeTransaction = await protocolKit.createTransaction({
+    const safeTransaction = await userProtocolKit.createTransaction({
       transactions: [
         {
           to: to,
@@ -150,9 +161,18 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    // Execute transaction (relayer pays gas)
-    // In production: Session Keys Module would execute this on behalf of the session key
-    const executeTxResponse = await protocolKit.executeTransaction(safeTransaction)
+    // Sign with user (the owner)
+    const signedSafeTx = await userProtocolKit.signTransaction(safeTransaction)
+    console.log(`   Transaction signed by user (owner)`)
+
+    // Execute transaction (relayer pays gas, user signed)
+    const relayerProtocolKit = await Safe.init({
+      provider: rpcUrl,
+      signer: process.env.RELAYER_PRIVATE_KEY!,
+      safeAddress: safeAddress,
+    })
+
+    const executeTxResponse = await relayerProtocolKit.executeTransaction(signedSafeTx)
 
     // Get transaction hash from the response
     let txHash: string | undefined

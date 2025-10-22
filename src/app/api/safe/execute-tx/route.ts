@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ethers } from 'ethers'
 import Safe from '@safe-global/protocol-kit'
 
 /**
@@ -15,7 +14,7 @@ import Safe from '@safe-global/protocol-kit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { safeAddress, to, data, value, signature, chainId } = body
+    const { safeAddress, to, data, value, signature, chainId, userPrivateKey } = body
 
     // Validation
     if (!safeAddress || !to || !data || signature === undefined || !chainId) {
@@ -34,20 +33,39 @@ export async function POST(request: NextRequest) {
     console.log(`   Safe: ${safeAddress}`)
     console.log(`   To: ${to}`)
     console.log(`   Data: ${data.slice(0, 20)}...`)
+    console.log(`   User signature received: ${signature ? 'Yes' : 'No'}`)
 
     // Get RPC provider
     const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
-    const provider = new ethers.JsonRpcProvider(rpcUrl)
 
-    // Initialize Safe Protocol Kit with relayer (who pays gas)
-    const protocolKit = await Safe.init({
+    // Check if we have the user's private key (needed for signing as owner)
+    if (!userPrivateKey) {
+      return NextResponse.json(
+        {
+          error: 'User private key required',
+          details: 'The user must provide their private key to sign this transaction as the Safe owner',
+        },
+        { status: 400 }
+      )
+    }
+
+    console.log(`   Using user private key to sign transaction`)
+
+    // Initialize Safe Protocol Kit with user's private key (the actual owner)
+    const userProtocolKit = await Safe.init({
       provider: rpcUrl,
-      signer: process.env.RELAYER_PRIVATE_KEY!,
+      signer: userPrivateKey,
       safeAddress: safeAddress,
     })
 
+    // Check Safe configuration
+    const owners = await userProtocolKit.getOwners()
+    const threshold = await userProtocolKit.getThreshold()
+    console.log(`   Safe owners: ${owners.join(', ')}`)
+    console.log(`   Safe threshold: ${threshold}`)
+
     // Create Safe transaction
-    const safeTransaction = await protocolKit.createTransaction({
+    const safeTransaction = await userProtocolKit.createTransaction({
       transactions: [
         {
           to: to,
@@ -57,9 +75,36 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    // Execute transaction (relayer pays gas, but user signed the intent)
-    console.log(`Executing transaction...`)
-    const executeTxResponse = await protocolKit.executeTransaction(safeTransaction)
+    // Sign the transaction with user (who is the owner)
+    const signedSafeTx = await userProtocolKit.signTransaction(safeTransaction)
+    console.log(`   Transaction signed by user (owner)`)
+    console.log(`   Signatures count: ${signedSafeTx.signatures.size}`)
+    console.log(`   Required signatures: ${threshold}`)
+
+    if (threshold > signedSafeTx.signatures.size) {
+      return NextResponse.json(
+        {
+          error: 'Insufficient signatures',
+          details: `This Safe requires ${threshold} signatures but only ${signedSafeTx.signatures.size} provided.`,
+          owners: owners,
+          threshold: threshold,
+        },
+        { status: 400 }
+      )
+    }
+
+    console.log(`   Executing transaction...`)
+
+    // Execute transaction (user signs, relayer pays gas)
+    // We need to switch to relayer signer for execution to pay gas
+    const relayerProtocolKit = await Safe.init({
+      provider: rpcUrl,
+      signer: process.env.RELAYER_PRIVATE_KEY!,
+      safeAddress: safeAddress,
+    })
+
+    // Execute with the user-signed transaction
+    const executeTxResponse = await relayerProtocolKit.executeTransaction(signedSafeTx)
 
     // Get transaction hash
     let txHash: string | undefined

@@ -42,7 +42,7 @@ interface SessionKey {
 }
 
 export default function PaymentPage() {
-  const { isAuthenticated, user, deriveWallet, signMessage } = useW3PK()
+  const { isAuthenticated, user, deriveWallet } = useW3PK()
   const toast = useToast()
 
   // State
@@ -146,7 +146,7 @@ export default function PaymentPage() {
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
       const signature = await sessionKeySigner.signMessage(message)
 
-      // Get derived addresses for userAddress
+      // Get derived wallet for userAddress and signing
       const wallet0 = await deriveWallet(0)
 
       // Send to backend
@@ -161,6 +161,7 @@ export default function PaymentPage() {
           amount: txData.value,
           sessionKeyAddress: sessionKey.sessionKeyAddress,
           sessionKeyValidUntil: sessionKey.permissions.validUntil,
+          userPrivateKey: wallet0.privateKey,
           signature,
         }),
       })
