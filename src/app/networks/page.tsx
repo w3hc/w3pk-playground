@@ -59,6 +59,8 @@ export default function NetworksPage() {
   const [failedEndpoints, setFailedEndpoints] = useState<Set<string>>(new Set())
   const [otherNetworks, setOtherNetworks] = useState<Network[]>([])
   const [loadingOtherNetworks, setLoadingOtherNetworks] = useState(false)
+  const [supportsEIP7702, setSupportsEIP7702] = useState<boolean | null>(null)
+  const [checkingEIP7702, setCheckingEIP7702] = useState(false)
   const toast = useToast()
 
   // Fetch all EVM networks from Chainlist
@@ -100,6 +102,7 @@ export default function NetworksPage() {
     setEndpoints([])
     setAvailableEndpoints(new Set())
     setFailedEndpoints(new Set())
+    setSupportsEIP7702(null)
 
     try {
       // Create a w3pk instance to access getEndpoints
@@ -113,6 +116,18 @@ export default function NetworksPage() {
 
       if (networkEndpoints && networkEndpoints.length > 0) {
         setEndpoints(networkEndpoints)
+
+        // Check EIP-7702 support
+        setCheckingEIP7702(true)
+        try {
+          const eip7702Support = await w3pk.supportsEIP7702(network.chainId)
+          setSupportsEIP7702(eip7702Support)
+        } catch (eipError) {
+          console.error('Failed to check EIP-7702 support:', eipError)
+          setSupportsEIP7702(null)
+        } finally {
+          setCheckingEIP7702(false)
+        }
       } else {
         toast({
           title: 'No Endpoints Found',
@@ -326,17 +341,32 @@ export default function NetworksPage() {
                     <Heading size="md" mb={1}>
                       {selectedNetwork.name}
                     </Heading>
-                    <HStack spacing={2}>
-                      <Badge
-                        colorScheme={selectedNetwork.isTestnet ? 'orange' : 'green'}
-                        fontSize="xs"
-                      >
-                        {selectedNetwork.isTestnet ? 'Testnet' : 'Mainnet'}
-                      </Badge>
-                      <Text fontSize="xs" color="gray.500">
-                        Chain ID: {selectedNetwork.chainId}
-                      </Text>
-                    </HStack>
+                    <VStack spacing={1} align="flex-start">
+                      <HStack spacing={2}>
+                        <Badge
+                          colorScheme={selectedNetwork.isTestnet ? 'orange' : 'green'}
+                          fontSize="xs"
+                        >
+                          {selectedNetwork.isTestnet ? 'Testnet' : 'Mainnet'}
+                        </Badge>
+                        <Text fontSize="xs" color="gray.500">
+                          Chain ID: {selectedNetwork.chainId}
+                        </Text>
+                      </HStack>
+                      {checkingEIP7702 ? (
+                        <Text fontSize="xs" color="gray.400">
+                          Checking EIP-7702 support...
+                        </Text>
+                      ) : supportsEIP7702 !== null ? (
+                        <Text
+                          fontSize="xs"
+                          color={supportsEIP7702 ? 'green.400' : 'red.400'}
+                          fontWeight="medium"
+                        >
+                          {supportsEIP7702 ? '✓ Supports EIP-7702' : '✗ Does NOT support EIP-7702'}
+                        </Text>
+                      ) : null}
+                    </VStack>
                   </Box>
                   <Text fontSize="sm" color="gray.400">
                     {endpoints.length} endpoint{endpoints.length !== 1 ? 's' : ''} available
