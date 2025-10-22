@@ -15,15 +15,34 @@ import Safe from '@safe-global/protocol-kit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userAddress, safeAddress, chainId, to, amount } = body
+    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature } = body
 
     // Validation
-    if (!userAddress || !safeAddress || !chainId || !to || !amount) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!userAddress || !safeAddress || !chainId || !to || !amount || !sessionKeyAddress) {
+      return NextResponse.json(
+        {
+          error: 'Missing required fields: userAddress, safeAddress, chainId, to, amount, sessionKeyAddress',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Session key signature is required for all transactions
+    if (!signature) {
+      return NextResponse.json(
+        {
+          error: 'Session key signature required. User must create a session key before sending transactions.',
+        },
+        { status: 400 }
+      )
     }
 
     // Validate addresses
-    if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress) || !/^0x[a-fA-F0-9]{40}$/.test(to)) {
+    if (
+      !/^0x[a-fA-F0-9]{40}$/.test(safeAddress) ||
+      !/^0x[a-fA-F0-9]{40}$/.test(to) ||
+      !/^0x[a-fA-F0-9]{40}$/.test(sessionKeyAddress)
+    ) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
@@ -37,6 +56,8 @@ export async function POST(request: NextRequest) {
     console.log(`   To: ${to}`)
     console.log(`   Amount: ${amount} wei`)
     console.log(`   Chain: ${chainId}`)
+    console.log(`   Session key: ${sessionKeyAddress}`)
+    console.log(`   Signature provided: ${signature ? 'Yes' : 'No'}`)
 
     // RPC URLs for different chains
     const rpcUrls: Record<number, string> = {
@@ -64,7 +85,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Initialize Safe Protocol Kit
+    // TODO: Verify session key signature and permissions
+    // 1. Verify the signature is from the sessionKeyAddress
+    // 2. Check session key is enabled on the Safe
+    // 3. Validate spending limits and expiry
+    // 4. Execute transaction through Session Keys Module
+    //
+    // For now, we'll verify signature and execute via relayer (who pays gas)
+    // In production, this would go through the Session Keys Module
+
+    // Verify signature is from session key address
+    const txData = {
+      to,
+      value: amount,
+      data: '0x',
+    }
+    const message = JSON.stringify(txData)
+    const recoveredAddress = ethers.verifyMessage(message, signature)
+
+    if (recoveredAddress.toLowerCase() !== sessionKeyAddress.toLowerCase()) {
+      return NextResponse.json(
+        {
+          error: 'Invalid signature',
+          details: `Signature does not match session key address. Expected: ${sessionKeyAddress}, Got: ${recoveredAddress}`,
+        },
+        { status: 403 }
+      )
+    }
+
+    console.log(`✅ Signature verified from session key ${sessionKeyAddress}`)
+
+    // Create Safe transaction signed by the session key
+    // NOTE: In full implementation, this would be executed via Session Keys Module
+    // For now, we verify the session key signature above and relayer submits it (pays gas)
     const protocolKit = await Safe.init({
       provider: rpcUrl,
       signer: process.env.RELAYER_PRIVATE_KEY!,
@@ -82,7 +135,8 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    // Execute transaction (relayer is owner, so can execute directly)
+    // Execute transaction (relayer pays gas)
+    // In production: Session Keys Module would execute this on behalf of the session key
     const executeTxResponse = await protocolKit.executeTransaction(safeTransaction)
 
     // Get transaction hash from the response
@@ -130,50 +184,49 @@ export async function POST(request: NextRequest) {
 
 /**
  * Implementation Notes:
- * 
- * To complete this endpoint, you'll need to:
- * 
- * 1. Verify Session Key:
- * 
- * // Check if user has active session key
- * // Verify permissions (spending limit, expiry, allowed tokens)
- * 
- * 2. Create Safe Transaction:
- * 
- * import Safe from '@safe-global/protocol-kit'
- * 
- * const protocolKit = await Safe.init({
- *   provider: providerUrl,
- *   signer: sessionKeyPrivateKey, // or relayer key
- *   safeAddress: safeAddress,
+ *
+ * Current Implementation (Session Key Signature Verification):
+ * 1. User signs transaction data with their W3PK (using session key derived path)
+ * 2. Backend verifies signature matches sessionKeyAddress
+ * 3. Relayer submits transaction to Safe (pays gas)
+ * 4. User never pays gas, but must have valid session key signature
+ *
+ * Full Production Implementation (with Session Keys Module):
+ *
+ * 1. Verify Session Key Permissions:
+ *
+ * // Check session key is enabled on Safe
+ * // Verify not expired
+ * // Check spending limit not exceeded
+ * const sessionKeysModule = getSessionKeyModule({
+ *   moduleAddress: SESSION_KEYS_MODULE_ADDRESS,
+ *   provider,
  * })
- * 
- * const safeTransaction = await protocolKit.createTransaction({
- *   transactions: [
- *     {
- *       to: to,
- *       value: amount,
- *       data: '0x',
- *     },
- *   ],
- * })
- * 
- * 3. Execute with Session Key Module:
- * 
- * // If using session keys module
- * const sessionKeysModule = // ... initialize module
- * const txResponse = await sessionKeysModule.executeTransactionWithSessionKey(
- *   safeTransaction,
+ *
+ * const isValid = await sessionKeysModule.isSessionKeyEnabled(
+ *   safeAddress,
  *   sessionKeyAddress
  * )
- * 
- * // Or execute directly if relayer is owner
- * const executeTxResponse = await protocolKit.executeTransaction(safeTransaction)
- * await executeTxResponse.transactionResponse?.wait()
- * 
- * 4. Error Handling:
+ *
+ * 2. Execute with Session Keys Module:
+ *
+ * // Module validates permissions and executes
+ * const txResponse = await sessionKeysModule.executeTransactionWithSessionKey({
+ *   safe: safeAddress,
+ *   sessionKey: sessionKeyAddress,
+ *   signature: signature, // Signed by W3PK with derived path
+ *   transaction: {
+ *     to,
+ *     value: amount,
+ *     data: '0x',
+ *   },
+ * })
+ *
+ * 3. Error Handling:
  *    - Insufficient balance
  *    - Session key expired
  *    - Spending limit exceeded
+ *    - Invalid signature
+ *    - Session key not enabled
  *    - Network errors
  */

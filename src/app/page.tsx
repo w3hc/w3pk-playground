@@ -229,6 +229,44 @@ export default function Home() {
                   </Text>
                 </Box>
               </Link>
+
+              <Link href="/safe">
+                <Box
+                  bg="gray.800"
+                  p={6}
+                  borderRadius="lg"
+                  border="1px solid"
+                  borderColor="gray.700"
+                  _hover={{
+                    borderColor: '#8c1c84',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 25px rgba(140, 28, 132, 0.15)',
+                  }}
+                  transition="all 0.3s ease"
+                  cursor="pointer"
+                  height="160px"
+                  display="flex"
+                  flexDirection="column"
+                  justifyContent="space-between"
+                >
+                  <Box>
+                    <Flex align="center" mb={3}>
+                      <Box bg="#8c1c84" p={2} borderRadius="md" mr={3}>
+                        <Icon as={FiShield} color="white" boxSize={5} />
+                      </Box>
+                      <Heading as="h3" size="md" color="white">
+                        Safe Wallet
+                      </Heading>
+                    </Flex>
+                    <Text color="gray.400" fontSize="sm">
+                      Smart wallet with gasless session keys
+                    </Text>
+                  </Box>
+                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Go →
+                  </Text>
+                </Box>
+              </Link>
             </SimpleGrid>
 
             {/* Additional Info */}

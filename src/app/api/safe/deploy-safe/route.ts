@@ -38,10 +38,11 @@ export async function POST(request: NextRequest) {
     const relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY!, provider)
 
     // Configure Safe deployment
-    // Both user and relayer are owners so relayer can execute transactions
+    // User's W3PK derived address is the sole owner
+    // Session keys (also derived addresses) will be used for transactions
     const safeAccountConfig = {
-      owners: [userAddress, relayerWallet.address],
-      threshold: 1, // Only 1 signature needed
+      owners: [userAddress],
+      threshold: 1,
     }
 
     // Initialize Safe SDK
@@ -57,33 +58,71 @@ export async function POST(request: NextRequest) {
     const safeAddress = await protocolKit.getAddress()
     console.log(`Predicted Safe address: ${safeAddress}`)
 
-    // Deploy Safe
-    const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction()
+    // Check if Safe is already deployed
+    const isSafeDeployed = await protocolKit.isSafeDeployed()
+    console.log(`Safe deployment status: ${isSafeDeployed ? 'Already deployed' : 'Not deployed'}`)
 
-    const txResponse = await relayerWallet.sendTransaction({
-      to: deploymentTransaction.to,
-      data: deploymentTransaction.data,
-      value: deploymentTransaction.value,
-    })
+    let txHash: string | undefined
 
-    const receipt = await txResponse.wait()
-    console.log(`✅ Safe deployed at ${safeAddress}`)
+    if (!isSafeDeployed) {
+      // Deploy Safe
+      console.log(`Deploying new Safe...`)
+      const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction()
 
-    // Send test tokens (0.1 xDAI) to the Safe
-    console.log(`💰 Funding Safe with 0.1 xDAI...`)
-    const fundingTx = await relayerWallet.sendTransaction({
-      to: safeAddress,
-      value: ethers.parseEther('0.1'),
-    })
+      const txResponse = await relayerWallet.sendTransaction({
+        to: deploymentTransaction.to,
+        data: deploymentTransaction.data,
+        value: deploymentTransaction.value,
+      })
 
-    await fundingTx.wait()
-    console.log(`✅ Funded Safe with 0.1 xDAI`)
+      const receipt = await txResponse.wait()
+      txHash = receipt?.hash
+      console.log(`✅ Safe deployed at ${safeAddress}`)
+
+      // Send test tokens (0.1 xDAI) to the Safe
+      console.log(`💰 Funding Safe with 0.1 xDAI...`)
+      const fundingTx = await relayerWallet.sendTransaction({
+        to: safeAddress,
+        value: ethers.parseEther('0.1'),
+      })
+
+      await fundingTx.wait()
+      console.log(`✅ Funded Safe with 0.1 xDAI`)
+    } else {
+      console.log(`✅ Safe already exists at ${safeAddress}`)
+
+      // Check balance
+      const balance = await provider.getBalance(safeAddress)
+      console.log(`Current balance: ${ethers.formatEther(balance)} xDAI`)
+
+      // Top up if balance is low (less than 0.05 xDAI)
+      if (balance < ethers.parseEther('0.05')) {
+        console.log(`💰 Balance low, topping up with 0.1 xDAI...`)
+        const fundingTx = await relayerWallet.sendTransaction({
+          to: safeAddress,
+          value: ethers.parseEther('0.1'),
+        })
+        await fundingTx.wait()
+        console.log(`✅ Topped up Safe with 0.1 xDAI`)
+      }
+    }
+
+    // Enable Session Keys Module
+    // NOTE: This requires user signature since relayer is not an owner
+    // For now, we'll return the Safe address and module enablement will be done
+    // when user creates their first session key (they'll sign the enableModule tx)
+    console.log(`📝 Session Keys Module must be enabled by user when creating first session key`)
+    console.log(`   Module address: ${process.env.SESSION_KEYS_MODULE_ADDRESS}`)
 
     return NextResponse.json({
       success: true,
       safeAddress,
-      txHash: receipt?.hash,
-      message: 'Safe deployed and funded successfully',
+      txHash,
+      alreadyDeployed: isSafeDeployed,
+      moduleAddress: process.env.SESSION_KEYS_MODULE_ADDRESS,
+      message: isSafeDeployed
+        ? 'Safe already deployed and ready to use.'
+        : 'Safe deployed and funded successfully.',
     })
   } catch (error: any) {
     console.error('Error deploying Safe:', error)
