@@ -14,8 +14,9 @@ import {
   IconButton,
   Tooltip,
   Badge,
+  Select,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FiCopy, FiRefreshCw, FiCheck, FiX } from 'react-icons/fi'
 import { createWeb3Passkey } from 'w3pk'
 
@@ -56,7 +57,43 @@ export default function NetworksPage() {
   const [testingEndpoint, setTestingEndpoint] = useState<string | null>(null)
   const [availableEndpoints, setAvailableEndpoints] = useState<Set<string>>(new Set())
   const [failedEndpoints, setFailedEndpoints] = useState<Set<string>>(new Set())
+  const [otherNetworks, setOtherNetworks] = useState<Network[]>([])
+  const [loadingOtherNetworks, setLoadingOtherNetworks] = useState(false)
   const toast = useToast()
+
+  // Fetch all EVM networks from Chainlist
+  useEffect(() => {
+    const fetchOtherNetworks = async () => {
+      setLoadingOtherNetworks(true)
+      try {
+        const response = await fetch('https://chainid.network/chains.json')
+        const chains = await response.json()
+
+        // Filter out networks that are already in our main list
+        const mainNetworkChainIds = new Set(NETWORKS.map(n => n.chainId))
+        const otherChains = chains
+          .filter((chain: any) => !mainNetworkChainIds.has(chain.chainId))
+          .map((chain: any) => ({
+            name: chain.name,
+            chainId: chain.chainId,
+            isTestnet: chain.name.toLowerCase().includes('test') ||
+                       chain.name.toLowerCase().includes('sepolia') ||
+                       chain.name.toLowerCase().includes('goerli') ||
+                       chain.name.toLowerCase().includes('holesky') ||
+                       chain.name.toLowerCase().includes('devnet'),
+          }))
+          .sort((a: Network, b: Network) => a.name.localeCompare(b.name))
+
+        setOtherNetworks(otherChains)
+      } catch (error) {
+        console.error('Failed to fetch chainlist:', error)
+      } finally {
+        setLoadingOtherNetworks(false)
+      }
+    }
+
+    fetchOtherNetworks()
+  }, [])
 
   const handleNetworkSelect = async (network: Network) => {
     setSelectedNetwork(network)
@@ -219,6 +256,43 @@ export default function NetworksPage() {
                 {network.name}
               </Button>
             ))}
+
+            <Text fontSize="sm" fontWeight="bold" color="gray.300" mb={2} mt={4}>
+              Others
+            </Text>
+            <Select
+              placeholder={loadingOtherNetworks ? 'Loading networks...' : 'Select a network...'}
+              size="sm"
+              bg="gray.800"
+              borderColor="#8c1c84"
+              color="gray.300"
+              _hover={{ borderColor: '#6d1566' }}
+              _focus={{ borderColor: '#8c1c84', boxShadow: '0 0 0 1px #8c1c84' }}
+              isDisabled={loadingOtherNetworks}
+              value={selectedNetwork && !NETWORKS.find(n => n.chainId === selectedNetwork.chainId) ? selectedNetwork.chainId : ''}
+              onChange={(e) => {
+                const chainId = parseInt(e.target.value)
+                const network = otherNetworks.find(n => n.chainId === chainId)
+                if (network) {
+                  handleNetworkSelect(network)
+                }
+              }}
+            >
+              <optgroup label="Mainnets">
+                {otherNetworks.filter(n => !n.isTestnet).map(network => (
+                  <option key={network.chainId} value={network.chainId}>
+                    {network.name} (Chain ID: {network.chainId})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Testnets">
+                {otherNetworks.filter(n => n.isTestnet).map(network => (
+                  <option key={network.chainId} value={network.chainId}>
+                    {network.name} (Chain ID: {network.chainId})
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
           </VStack>
 
           {/* Endpoints Display */}
