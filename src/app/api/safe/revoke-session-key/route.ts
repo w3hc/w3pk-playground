@@ -35,15 +35,15 @@ export async function POST(request: NextRequest) {
     console.log(`🔒 Revoking session key ${sessionKeyAddress}`)
     console.log(`   For Safe: ${safeAddress}`)
 
-    // TODO: Implement actual session key revocation logic
-    // This would typically involve:
-    // 1. Verify user owns the Safe
-    // 2. Check session key exists and is active
-    // 3. Create revocation transaction
-    // 4. Execute via Safe
-    // 5. Update storage to mark key as inactive
-
-    // For now, return mock data
+    // FUTURE ENHANCEMENT: Implement on-chain session key revocation
+    // Production implementation would:
+    // 1. Verify user owns the Safe (derive wallet, check ownership)
+    // 2. Check session key exists and is active on Smart Sessions module
+    // 3. Create revocation transaction (call module's disableSession)
+    // 4. Execute via Safe with user signature (use execute-tx endpoint)
+    // 5. Update localStorage to mark key as inactive
+    //
+    // Current: Mock implementation for UI testing
     // Generate a valid 64-character tx hash
     const mockTxHash = `0x${Array.from({ length: 64 }, () =>
       Math.floor(Math.random() * 16).toString(16)

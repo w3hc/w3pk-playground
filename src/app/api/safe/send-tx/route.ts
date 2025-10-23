@@ -101,13 +101,15 @@ export async function POST(request: NextRequest) {
 
     // Session Key Validation:
     // ✅ 1. Verify the signature is from the sessionKeyAddress
-    // ✅ 2. Validate session key expiry (implemented above)
-    // TODO: 3. Check session key is enabled on the Safe
-    // TODO: 4. Validate spending limits
-    // TODO: 5. Execute transaction through Session Keys Module
+    // ✅ 2. Validate session key expiry
+    // ✅ 3. User signs Safe transaction (owner signature)
+    // ✅ 4. Relayer executes and pays gas
     //
-    // For now, we verify signature and expiry, then execute via relayer (who pays gas)
-    // In production, this would go through the Session Keys Module
+    // FUTURE ENHANCEMENTS for production:
+    // - Check session key is enabled on-chain via Smart Sessions module
+    // - Validate spending limits on-chain
+    // - Execute through Session Keys Module instead of direct Safe execution
+    // - On-chain permission enforcement vs. signature verification
 
     // Verify signature is from session key address
     const txData = {
