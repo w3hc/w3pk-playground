@@ -186,9 +186,16 @@ export default function Header() {
                     RPC endpoints
                   </MenuItem>
                 </Link>
-                <MenuItem fontSize="md" px={4} py={3} isDisabled color="gray.500">
-                  Send transaction
-                </MenuItem>
+                <Link href="/tx" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    Send & receive
+                  </MenuItem>
+                </Link>
+                <Link href="/safe" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    Safe dashboard
+                  </MenuItem>
+                </Link>
               </MenuList>
             </Menu>
             <LanguageSelector />

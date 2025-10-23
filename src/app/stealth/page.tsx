@@ -189,14 +189,14 @@ export default function StealthAddresses() {
   }
 
   return (
-    <Container maxW="container.xl" py={10}>
+    <Container maxW="container.md" py={10}>
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <Box textAlign="center">
           <HStack justify="center" mb={2}>
             <Icon as={FiShield} color="#8c1c84" boxSize={8} />
             <Heading as="h1" size="xl">
-              ERC-5564 Stealth Addresses
+              Stealth Addresses
             </Heading>
           </HStack>
           <Text color="gray.400" mb={2}>

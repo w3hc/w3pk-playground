@@ -73,6 +73,16 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
   const [isMounted, setIsMounted] = useState(false)
   const toast = useToast()
 
+  // Helper function to check if error is user-cancelled WebAuthn
+  const isUserCancelledError = (error: any): boolean => {
+    return (
+      error?.name === 'NotAllowedError' ||
+      error?.message?.includes('NotAllowedError') ||
+      error?.message?.includes('timed out') ||
+      error?.message?.includes('not allowed')
+    )
+  }
+
   useEffect(() => {
     setIsMounted(true)
   }, [])
@@ -232,13 +242,17 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       })
     } catch (error: any) {
       console.error('Authentication failed:', error)
-      toast({
-        title: 'Authentication Failed',
-        description: error.message || 'Failed to authenticate with w3pk',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+
+      // Don't show toast for user-cancelled errors
+      if (!isUserCancelledError(error)) {
+        toast({
+          title: 'Authentication Failed',
+          description: error.message || 'Failed to authenticate with w3pk',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       throw error
     } finally {
       setIsLoading(false)
@@ -270,13 +284,17 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       return signature
     } catch (error: any) {
       console.error('Message signing failed:', error)
-      toast({
-        title: 'Signing Failed',
-        description: error.message || 'Failed to sign message with w3pk',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+
+      // Don't show toast for user-cancelled errors
+      if (!isUserCancelledError(error)) {
+        toast({
+          title: 'Signing Failed',
+          description: error.message || 'Failed to sign message with w3pk',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       return null
     }
   }
@@ -314,24 +332,31 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
           return derivedWallet
         } catch (retryError: any) {
           console.error('Retry after authentication failed:', retryError)
-          toast({
-            title: 'Authentication Required',
-            description: 'Please authenticate to derive addresses',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          })
+
+          // Don't show toast for user-cancelled errors
+          if (!isUserCancelledError(retryError)) {
+            toast({
+              title: 'Authentication Required',
+              description: 'Please authenticate to derive addresses',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            })
+          }
           throw retryError
         }
       }
 
-      toast({
-        title: 'Derivation Failed',
-        description: error.message || `Failed to derive wallet at index ${index}`,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      // Don't show toast for user-cancelled errors
+      if (!isUserCancelledError(error)) {
+        toast({
+          title: 'Derivation Failed',
+          description: error.message || `Failed to derive wallet at index ${index}`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       throw error
     }
   }
@@ -491,24 +516,31 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
           return stealthKeys
         } catch (retryError: any) {
           console.error('Retry after authentication failed:', retryError)
-          toast({
-            title: 'Authentication Required',
-            description: 'Please authenticate to access stealth keys',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          })
+
+          // Don't show toast for user-cancelled errors
+          if (!isUserCancelledError(retryError)) {
+            toast({
+              title: 'Authentication Required',
+              description: 'Please authenticate to access stealth keys',
+              status: 'error',
+              duration: 5000,
+              isClosable: true,
+            })
+          }
           return null
         }
       }
 
-      toast({
-        title: 'Stealth Keys Failed',
-        description: error.message || 'Failed to get stealth keys',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      // Don't show toast for user-cancelled errors
+      if (!isUserCancelledError(error)) {
+        toast({
+          title: 'Stealth Keys Failed',
+          description: error.message || 'Failed to get stealth keys',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       return null
     }
   }
