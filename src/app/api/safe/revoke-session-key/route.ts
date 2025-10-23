@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * API Route: Revoke Session Key
- * 
+ *
  * This endpoint revokes an active session key for a Safe wallet
  * Once revoked, the session key can no longer be used for transactions
- * 
+ *
  * POST /api/safe/revoke-session-key
  * Body: { userAddress: string, safeAddress: string, chainId: number, sessionKeyAddress: string }
  */
@@ -17,10 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!userAddress || !safeAddress || !chainId || !sessionKeyAddress) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Validate addresses
@@ -77,40 +74,40 @@ export async function POST(request: NextRequest) {
 
 /**
  * Implementation Notes:
- * 
+ *
  * To complete this endpoint:
- * 
+ *
  * 1. Create Revocation Transaction:
- * 
+ *
  * import { getSessionKeyModule } from '@rhinestone/module-sdk'
- * 
+ *
  * const sessionKeysModule = getSessionKeyModule({
  *   moduleAddress: SESSION_KEYS_MODULE_ADDRESS,
  *   provider,
  * })
- * 
+ *
  * const revokeSessionKeyTx = await sessionKeysModule.getRevokeSessionKeyTransaction(
  *   safeAddress,
  *   sessionKeyAddress
  * )
- * 
+ *
  * 2. Execute Through Safe:
- * 
+ *
  * import Safe from '@safe-global/protocol-kit'
- * 
+ *
  * const protocolKit = await Safe.init({
  *   provider: providerUrl,
  *   signer: relayerPrivateKey, // or user's key
  *   safeAddress,
  * })
- * 
+ *
  * const safeTransaction = await protocolKit.createTransaction({
  *   transactions: [revokeSessionKeyTx],
  * })
- * 
+ *
  * const executeTxResponse = await protocolKit.executeTransaction(safeTransaction)
  * await executeTxResponse.transactionResponse?.wait()
- * 
+ *
  * 3. Update Storage:
  *    - Mark session key as inactive in database
  *    - Remove session key private key (if stored)

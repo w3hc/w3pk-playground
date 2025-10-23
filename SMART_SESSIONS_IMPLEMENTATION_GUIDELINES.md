@@ -19,21 +19,25 @@ This document explains the difference between the current simplified session key
 ### Security Model
 
 ✅ **Strengths:**
+
 - User must authenticate with passkey
 - Backend verifies signatures
 - Simple implementation for demos/prototypes
 - Lower gas costs (fewer on-chain transactions)
 
 ❌ **Limitations:**
+
 - Spending limits are NOT enforced on-chain
 - Session permissions are NOT stored on the blockchain
 - Requires trusting the backend/relayer
 - If backend is bypassed, limits can be ignored
 
 ### Analogy
+
 It's like writing "spending limit: $100" on a sticky note, but the bank (blockchain) doesn't actually know about it.
 
 ### Code Example
+
 ```typescript
 // Backend validation (current)
 if (Date.now() > sessionKey.validUntil * 1000) {
@@ -100,7 +104,7 @@ const policy = {
     {
       to: '0x...', // Contract address
       selector: '0xa9059cbb', // transfer(address,uint256)
-    }
+    },
   ],
 }
 ```
@@ -206,6 +210,7 @@ function executeWithSession(
 ### Security Model
 
 ✅ **Strengths:**
+
 - Session permissions stored on blockchain (immutable, verifiable)
 - Smart contract enforces spending limits automatically
 - No need to trust backend/relayer
@@ -215,32 +220,34 @@ function executeWithSession(
 - True decentralization
 
 ❌ **Tradeoffs:**
+
 - Higher gas costs (on-chain storage and verification)
 - More complex implementation
 - Requires Rhinestone SDK integration
 - Additional transactions for session management
 
 ### Analogy
+
 The bank (blockchain) now has your actual spending limit in their database. Even if you try to bypass their app, the ATM (smart contract) will reject transactions over the limit.
 
 ---
 
 ## Comparison Table
 
-| Feature | Current Implementation | Full Smart Sessions Module |
-|---------|----------------------|---------------------------|
-| **Session registration** | localStorage (client-side) | On-chain (blockchain state) |
-| **Spending limits** | Backend validation | Smart contract enforcement |
-| **Expiry check** | Backend validation | Smart contract enforcement |
-| **Security model** | Trust backend/relayer | Trustless (blockchain verification) |
-| **Permission storage** | Client localStorage | Blockchain state |
-| **Verification** | Backend API | Smart contract |
-| **Complexity** | Simple ✅ | Complex (SDK integration) |
-| **Gas costs** | Lower (fewer transactions) | Higher (on-chain storage) |
-| **Implementation time** | Days | Weeks |
-| **Good for demo?** | ✅ Yes | Overkill |
-| **Production ready?** | ⚠️ Requires trusted backend | ✅ Fully trustless |
-| **Composability** | Limited | Full DeFi composability |
+| Feature                  | Current Implementation      | Full Smart Sessions Module          |
+| ------------------------ | --------------------------- | ----------------------------------- |
+| **Session registration** | localStorage (client-side)  | On-chain (blockchain state)         |
+| **Spending limits**      | Backend validation          | Smart contract enforcement          |
+| **Expiry check**         | Backend validation          | Smart contract enforcement          |
+| **Security model**       | Trust backend/relayer       | Trustless (blockchain verification) |
+| **Permission storage**   | Client localStorage         | Blockchain state                    |
+| **Verification**         | Backend API                 | Smart contract                      |
+| **Complexity**           | Simple ✅                   | Complex (SDK integration)           |
+| **Gas costs**            | Lower (fewer transactions)  | Higher (on-chain storage)           |
+| **Implementation time**  | Days                        | Weeks                               |
+| **Good for demo?**       | ✅ Yes                      | Overkill                            |
+| **Production ready?**    | ⚠️ Requires trusted backend | ✅ Fully trustless                  |
+| **Composability**        | Limited                     | Full DeFi composability             |
 
 ---
 
@@ -271,18 +278,21 @@ The bank (blockchain) now has your actual spending limit in their database. Even
 ## Migration Path
 
 ### Phase 1: Current Implementation (✅ Completed)
+
 - Session keys via W3PK derivation
 - Backend signature verification
 - localStorage metadata tracking
 - Basic spending limit checks
 
 ### Phase 2: Hybrid Approach
+
 - Keep current backend validation
 - Add on-chain session registration
 - Dual verification (backend + on-chain)
 - Gradual SDK integration
 
 ### Phase 3: Full On-Chain (Future)
+
 - Complete Rhinestone SDK integration
 - Remove backend validation
 - Pure on-chain permission enforcement
@@ -293,11 +303,13 @@ The bank (blockchain) now has your actual spending limit in their database. Even
 ## Implementation Resources
 
 ### Required Packages
+
 ```bash
 npm install @rhinestone/module-sdk
 ```
 
 ### Key Addresses
+
 ```typescript
 // Smart Sessions Module (deterministic across all EVM chains)
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
@@ -307,6 +319,7 @@ const OWNABLE_VALIDATOR = '0x000000000013fdB5234E4E3162a810F54d9f7E98'
 ```
 
 ### Documentation Links
+
 - [Rhinestone Module SDK](https://docs.rhinestone.wtf/)
 - [Smart Sessions Module](https://docs.rhinestone.wtf/module-sdk/smart-sessions)
 - [Safe Protocol Kit](https://docs.safe.global/sdk/protocol-kit)
@@ -317,12 +330,15 @@ const OWNABLE_VALIDATOR = '0x000000000013fdB5234E4E3162a810F54d9f7E98'
 ## Code References
 
 ### Current Implementation Files
+
 - `src/app/api/safe/create-session-key/route.ts` - Session creation (simplified)
 - `src/app/api/safe/send-tx/route.ts` - Transaction execution with backend validation
 - `src/app/safe/page.tsx` - Frontend session key management
 
 ### Future Implementation TODOs
+
 Look for comments marked:
+
 ```typescript
 // FUTURE ENHANCEMENT: Full Smart Sessions Module SDK integration
 ```
@@ -334,12 +350,14 @@ These indicate where the full module integration would be added.
 ## Conclusion
 
 The current implementation is **perfectly adequate** for:
+
 - Demos and prototypes
 - Educational purposes
 - Trusted environment applications
 - MVPs and proof-of-concepts
 
 The full Smart Sessions Module is **necessary** for:
+
 - Production dApps
 - Trustless execution
 - Multi-party systems

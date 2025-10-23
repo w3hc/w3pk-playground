@@ -15,13 +15,24 @@ import Safe from '@safe-global/protocol-kit'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature, sessionKeyValidUntil, userPrivateKey } = body
+    const {
+      userAddress,
+      safeAddress,
+      chainId,
+      to,
+      amount,
+      sessionKeyAddress,
+      signature,
+      sessionKeyValidUntil,
+      userPrivateKey,
+    } = body
 
     // Validation
     if (!userAddress || !safeAddress || !chainId || !to || !amount || !sessionKeyAddress) {
       return NextResponse.json(
         {
-          error: 'Missing required fields: userAddress, safeAddress, chainId, to, amount, sessionKeyAddress',
+          error:
+            'Missing required fields: userAddress, safeAddress, chainId, to, amount, sessionKeyAddress',
         },
         { status: 400 }
       )
@@ -45,7 +56,8 @@ export async function POST(request: NextRequest) {
     if (!signature) {
       return NextResponse.json(
         {
-          error: 'Session key signature required. User must create a session key before sending transactions.',
+          error:
+            'Session key signature required. User must create a session key before sending transactions.',
         },
         { status: 400 }
       )
@@ -137,7 +149,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'User private key required',
-          details: 'The user must provide their private key to sign this transaction as the Safe owner',
+          details:
+            'The user must provide their private key to sign this transaction as the Safe owner',
         },
         { status: 400 }
       )

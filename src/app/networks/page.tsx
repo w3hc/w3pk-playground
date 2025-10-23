@@ -78,11 +78,12 @@ export default function NetworksPage() {
           .map((chain: any) => ({
             name: chain.name,
             chainId: chain.chainId,
-            isTestnet: chain.name.toLowerCase().includes('test') ||
-                       chain.name.toLowerCase().includes('sepolia') ||
-                       chain.name.toLowerCase().includes('goerli') ||
-                       chain.name.toLowerCase().includes('holesky') ||
-                       chain.name.toLowerCase().includes('devnet'),
+            isTestnet:
+              chain.name.toLowerCase().includes('test') ||
+              chain.name.toLowerCase().includes('sepolia') ||
+              chain.name.toLowerCase().includes('goerli') ||
+              chain.name.toLowerCase().includes('holesky') ||
+              chain.name.toLowerCase().includes('devnet'),
           }))
           .sort((a: Network, b: Network) => a.name.localeCompare(b.name))
 
@@ -284,8 +285,12 @@ export default function NetworksPage() {
               _hover={{ borderColor: '#6d1566' }}
               _focus={{ borderColor: '#8c1c84', boxShadow: '0 0 0 1px #8c1c84' }}
               isDisabled={loadingOtherNetworks}
-              value={selectedNetwork && !NETWORKS.find(n => n.chainId === selectedNetwork.chainId) ? selectedNetwork.chainId : ''}
-              onChange={(e) => {
+              value={
+                selectedNetwork && !NETWORKS.find(n => n.chainId === selectedNetwork.chainId)
+                  ? selectedNetwork.chainId
+                  : ''
+              }
+              onChange={e => {
                 const chainId = parseInt(e.target.value)
                 const network = otherNetworks.find(n => n.chainId === chainId)
                 if (network) {
@@ -294,18 +299,22 @@ export default function NetworksPage() {
               }}
             >
               <optgroup label="Mainnets">
-                {otherNetworks.filter(n => !n.isTestnet).map(network => (
-                  <option key={network.chainId} value={network.chainId}>
-                    {network.name} (Chain ID: {network.chainId})
-                  </option>
-                ))}
+                {otherNetworks
+                  .filter(n => !n.isTestnet)
+                  .map(network => (
+                    <option key={network.chainId} value={network.chainId}>
+                      {network.name} (Chain ID: {network.chainId})
+                    </option>
+                  ))}
               </optgroup>
               <optgroup label="Testnets">
-                {otherNetworks.filter(n => n.isTestnet).map(network => (
-                  <option key={network.chainId} value={network.chainId}>
-                    {network.name} (Chain ID: {network.chainId})
-                  </option>
-                ))}
+                {otherNetworks
+                  .filter(n => n.isTestnet)
+                  .map(network => (
+                    <option key={network.chainId} value={network.chainId}>
+                      {network.name} (Chain ID: {network.chainId})
+                    </option>
+                  ))}
               </optgroup>
             </Select>
           </VStack>

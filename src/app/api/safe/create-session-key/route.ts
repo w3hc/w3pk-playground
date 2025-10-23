@@ -7,10 +7,10 @@ const OWNABLE_VALIDATOR = '0x000000000013fdB5234E4E3162a810F54d9f7E98'
 
 /**
  * API Route: Create Session Key
- * 
+ *
  * This endpoint creates a new session key for a Safe wallet
  * Session keys allow delegated transaction execution with specific permissions
- * 
+ *
  * POST /api/safe/create-session-key
  * Body: { userAddress: string, safeAddress: string, chainId: number }
  */
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     //
     // For now, session keys work via user signature verification
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
     console.log(`✅ Session key registered: ${sessionKeyAddress}`)
     console.log(`   Ready to sign transactions with W3PK derived path`)
@@ -160,14 +160,14 @@ export async function POST(request: NextRequest) {
  * // Frontend will sign transactions with W3PK using the derived path
  *
  * 3. Enable Session Key on Safe:
- * 
+ *
  * import { getSessionKeyModule } from '@rhinestone/module-sdk'
- * 
+ *
  * const sessionKeysModule = getSessionKeyModule({
  *   moduleAddress: SESSION_KEYS_MODULE_ADDRESS,
  *   provider,
  * })
- * 
+ *
  * // Define permissions
  * const sessionKeyData = {
  *   sessionKey: sessionKeyAddress,
@@ -178,26 +178,26 @@ export async function POST(request: NextRequest) {
  *     allowedTokens: [ethers.ZeroAddress], // Native token
  *   },
  * }
- * 
+ *
  * // Create transaction to enable session key
  * const enableSessionKeyTx = await sessionKeysModule.getEnableSessionKeyTransaction(
  *   safeAddress,
  *   sessionKeyData
  * )
- * 
+ *
  * // Execute through Safe
  * const protocolKit = await Safe.init({
  *   provider: providerUrl,
  *   signer: relayerPrivateKey,
  *   safeAddress,
  * })
- * 
+ *
  * const safeTransaction = await protocolKit.createTransaction({
  *   transactions: [enableSessionKeyTx],
  * })
- * 
+ *
  * await protocolKit.executeTransaction(safeTransaction)
- * 
+ *
  * 4. Store Session Key Info:
  *    - Store session key private key encrypted
  *    - Link to Safe address and user

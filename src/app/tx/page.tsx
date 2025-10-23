@@ -319,7 +319,7 @@ export default function PaymentPage() {
                 <Input
                   placeholder="0x..."
                   value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  onChange={e => setRecipient(e.target.value)}
                   fontFamily="mono"
                   isDisabled={!sessionKey || isSessionKeyExpired}
                 />
@@ -332,7 +332,7 @@ export default function PaymentPage() {
                   step="0.001"
                   placeholder="0.01"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={e => setAmount(e.target.value)}
                   isDisabled={!sessionKey || isSessionKeyExpired}
                 />
               </FormControl>

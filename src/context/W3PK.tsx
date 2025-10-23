@@ -10,7 +10,11 @@ import React, {
   useEffect,
 } from 'react'
 import { useToast } from '@chakra-ui/react'
-import { createWeb3Passkey, StealthKeys, generateStealthAddress as generateStealthAddressFromMetaAddress } from 'w3pk'
+import {
+  createWeb3Passkey,
+  StealthKeys,
+  generateStealthAddress as generateStealthAddressFromMetaAddress,
+} from 'w3pk'
 
 interface W3pkUser {
   id: string
