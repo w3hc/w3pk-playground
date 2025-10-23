@@ -83,6 +83,61 @@ export default function SafePage() {
     }
   }, [isAuthenticated, user])
 
+  // Verify ownership when Safe is loaded
+  useEffect(() => {
+    const verifyOwnership = async () => {
+      if (safeAddress && isAuthenticated && !safeOwner) {
+        // If we have a Safe but no owner info, try to derive and verify
+        try {
+          const wallet0 = await deriveWallet(0)
+
+          // Check on-chain if this wallet is an owner
+          const response = await fetch('/api/safe/get-owners', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              safeAddress,
+              chainId: 10200,
+            }),
+          })
+
+          const data = await response.json()
+          if (data.success && data.owners?.some((owner: string) => owner.toLowerCase() === wallet0.address.toLowerCase())) {
+            // Update localStorage with owner info
+            setSafeOwner(wallet0.address)
+            const existingData = localStorage.getItem(`safe_${user?.id}`)
+            const existing = existingData ? JSON.parse(existingData) : {}
+            localStorage.setItem(
+              `safe_${user?.id}`,
+              JSON.stringify({
+                ...existing,
+                safeOwner: wallet0.address,
+              })
+            )
+          } else {
+            // This Safe doesn't belong to current user - clear it
+            console.warn('Safe does not belong to current user, clearing...')
+            localStorage.removeItem(`safe_${user?.id}`)
+            setSafeAddress(null)
+            setSafeOwner(null)
+            setSessionKey(null)
+
+            toast({
+              title: 'Safe Cleared',
+              description: 'The saved Safe did not belong to your account. Please deploy a new one.',
+              status: 'warning',
+              duration: 8000,
+            })
+          }
+        } catch (error) {
+          console.error('Error verifying ownership:', error)
+        }
+      }
+    }
+
+    verifyOwnership()
+  }, [safeAddress, safeOwner, isAuthenticated, deriveWallet, user, toast])
+
   // Get derived addresses - removed automatic loading to avoid prompting for auth on page load
   // Addresses are derived on-demand when needed (e.g., when deploying Safe or creating session key)
 
@@ -226,10 +281,13 @@ export default function SafePage() {
       if (data.success) {
         setSessionKey(data)
 
-        // Save to localStorage
+        // Save to localStorage - preserve existing data
+        const existingData = localStorage.getItem(`safe_${user?.id}`)
+        const existing = existingData ? JSON.parse(existingData) : {}
         localStorage.setItem(
           `safe_${user?.id}`,
           JSON.stringify({
+            ...existing,
             safeAddress,
             sessionKey: data,
           })
