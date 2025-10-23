@@ -102,7 +102,12 @@ export default function SafePage() {
           })
 
           const data = await response.json()
-          if (data.success && data.owners?.some((owner: string) => owner.toLowerCase() === wallet0.address.toLowerCase())) {
+          if (
+            data.success &&
+            data.owners?.some(
+              (owner: string) => owner.toLowerCase() === wallet0.address.toLowerCase()
+            )
+          ) {
             // Update localStorage with owner info
             setSafeOwner(wallet0.address)
             const existingData = localStorage.getItem(`safe_${user?.id}`)
@@ -124,7 +129,8 @@ export default function SafePage() {
 
             toast({
               title: 'Safe Cleared',
-              description: 'The saved Safe did not belong to your account. Please deploy a new one.',
+              description:
+                'The saved Safe did not belong to your account. Please deploy a new one.',
               status: 'warning',
               duration: 8000,
             })
@@ -415,7 +421,6 @@ export default function SafePage() {
       }
 
       // Derive the session key wallet to sign the transaction
-      // This requires user authentication with W3PK
       const sessionKeyWallet = await deriveWallet(sessionKey.sessionKeyIndex)
 
       // Sign with the session key's private key
@@ -426,7 +431,7 @@ export default function SafePage() {
       // Derive the owner wallet (index 0) to sign the Safe transaction
       const ownerWallet = await deriveWallet(0)
 
-      // Send to backend
+      // Try WebSocket mode first, fall back to sync mode
       const response = await fetch('/api/safe/send-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -440,25 +445,119 @@ export default function SafePage() {
           sessionKeyValidUntil: sessionKey.permissions.validUntil,
           userPrivateKey: ownerWallet.privateKey,
           signature,
+          useWebSocket: true, // Request WebSocket mode
         }),
       })
 
       const data = await response.json()
 
-      if (data.success) {
+      if (data.success && data.useWebSocket && data.txId) {
+        // WebSocket mode - connect for real-time updates
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const host = window.location.host
+        const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?txId=${data.txId}`)
+
+        ws.onmessage = event => {
+          const update = JSON.parse(event.data)
+          console.log('WebSocket update:', update)
+
+          if (update.status === 'verified') {
+            toast({
+              title: '✅ Transaction Verified',
+              description: `Verified in ${update.duration?.toFixed(2)}s`,
+              status: 'success',
+              duration: 4000,
+              containerStyle: {
+                bg: 'green.500',
+              },
+            })
+          } else if (update.status === 'confirmed') {
+            toast({
+              title: '✅ Transaction Confirmed',
+              description: `Confirmed on-chain in ${update.duration?.toFixed(2)}s`,
+              status: 'success',
+              duration: 5000,
+              containerStyle: {
+                bg: 'green.500',
+              },
+            })
+
+            if (update.txHash) {
+              toast({
+                title: 'Transaction Complete!',
+                description: `Tx: ${update.txHash.slice(0, 20)}...`,
+                status: 'success',
+                duration: 10000,
+              })
+            }
+
+            // Clear form and reload balance
+            setRecipient('')
+            setAmount('')
+            setTimeout(() => loadBalance(), 3000)
+
+            // Close WebSocket
+            ws.close()
+            setIsSending(false)
+          }
+        }
+
+        ws.onerror = error => {
+          console.error('WebSocket error:', error)
+          toast({
+            title: 'Connection Error',
+            description: 'Lost connection to transaction status',
+            status: 'warning',
+            duration: 5000,
+          })
+          setIsSending(false)
+        }
+
+        ws.onclose = () => {
+          console.log('WebSocket closed')
+        }
+      } else if (data.success && data.txHash) {
+        // Synchronous mode - transaction already completed
+        console.log('Transaction completed synchronously (no WebSocket)')
+
+        // Show completion toasts
+        if (data.durations?.verified) {
+          toast({
+            title: '✅ Transaction Verified',
+            description: `Verified in ${data.durations.verified.toFixed(2)}s`,
+            status: 'success',
+            duration: 4000,
+            containerStyle: {
+              bg: 'green.500',
+            },
+          })
+        }
+
+        if (data.durations?.confirmed) {
+          toast({
+            title: '✅ Transaction Confirmed',
+            description: `Confirmed on-chain in ${data.durations.confirmed.toFixed(2)}s`,
+            status: 'success',
+            duration: 5000,
+            containerStyle: {
+              bg: 'green.500',
+            },
+          })
+        }
+
         toast({
-          title: 'Transaction Sent!',
+          title: 'Transaction Complete!',
           description: `Tx: ${data.txHash.slice(0, 20)}...`,
           status: 'success',
           duration: 10000,
         })
 
-        // Clear form
+        // Clear form and reload balance
         setRecipient('')
         setAmount('')
-
-        // Reload balance
         setTimeout(() => loadBalance(), 3000)
+
+        setIsSending(false)
       } else {
         throw new Error(data.error || 'Transaction failed')
       }
@@ -469,7 +568,6 @@ export default function SafePage() {
         status: 'error',
         duration: 8000,
       })
-    } finally {
       setIsSending(false)
     }
   }

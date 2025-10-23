@@ -4,10 +4,12 @@
   "description": "Passwordless Ethereum wallets secured by biometric authentication and client-side encryption",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "node server.js",
+    "dev:old": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "next start",
-    "start:3002": "next start -p 3002",
+    "start": "NODE_ENV=production node server.js",
+    "start:old": "next start",
+    "start:prod": "PORT=3005 node server.js",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -29,7 +31,8 @@
     "react-dom": "^19.1.0",
     "react-icons": "^5.4.0",
     "react-syntax-highlighter": "^16.0.0",
-    "w3pk": "^0.6.0"
+    "w3pk": "^0.6.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
