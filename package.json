@@ -4,8 +4,8 @@
   "description": "Passwordless Ethereum wallets secured by biometric authentication and client-side encryption",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "start:3002": "next start -p 3002",
     "lint": "next lint",
@@ -23,7 +23,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "ethers": "^6.13.4",
     "framer-motion": "^12.23.3",
-    "next": "^15.1.3",
+    "next": "^16.0.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -36,7 +36,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.1.3",
+    "eslint-config-next": "^16.0.0",
     "eslint-config-prettier": "^10.1.5",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2"
