@@ -59,6 +59,9 @@ importers:
       w3pk:
         specifier: ^0.6.0
         version: 0.6.0(ethers@6.15.0)
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.1

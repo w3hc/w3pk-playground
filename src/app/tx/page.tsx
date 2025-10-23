@@ -107,6 +107,63 @@ export default function PaymentPage() {
     }
   }, [safeAddress, loadBalance])
 
+  // Listen for incoming transactions to this Safe address
+  useEffect(() => {
+    if (!safeAddress) return
+
+    // Connect WebSocket to listen for incoming transactions
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?recipient=${safeAddress}`)
+
+    ws.onmessage = event => {
+      const update = JSON.parse(event.data)
+      console.log('Incoming transaction update:', update)
+
+      if (update.isIncoming) {
+        const amountEth = ethers.formatEther(update.amount || '0')
+
+        if (update.status === 'verified') {
+          toast({
+            title: '💰 Incoming Payment Verified',
+            description: `Receiving ${amountEth} xDAI from ${update.from?.slice(0, 10)}...`,
+            status: 'info',
+            duration: 5000,
+            containerStyle: {
+              bg: 'blue.500',
+            },
+          })
+        } else if (update.status === 'confirmed') {
+          toast({
+            title: '✅ Payment Received!',
+            description: `${amountEth} xDAI received in ${update.duration?.toFixed(2)}s`,
+            status: 'success',
+            duration: 8000,
+            containerStyle: {
+              bg: 'green.500',
+            },
+          })
+
+          // Reload balance after receiving payment
+          setTimeout(() => loadBalance(), 2000)
+        }
+      }
+    }
+
+    ws.onerror = error => {
+      console.error('WebSocket error for incoming transactions:', error)
+    }
+
+    ws.onopen = () => {
+      console.log('Listening for incoming transactions to:', safeAddress)
+    }
+
+    // Cleanup on unmount
+    return () => {
+      ws.close()
+    }
+  }, [safeAddress, toast, loadBalance])
+
   const sendTransaction = async () => {
     if (!safeAddress || !sessionKey || !recipient || !amount) {
       toast({
@@ -149,7 +206,7 @@ export default function PaymentPage() {
       // Get derived wallet for userAddress and signing
       const wallet0 = await deriveWallet(0)
 
-      // Send to backend
+      // Try WebSocket mode first, fall back to sync mode
       const response = await fetch('/api/safe/send-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -163,24 +220,102 @@ export default function PaymentPage() {
           sessionKeyValidUntil: sessionKey.permissions.validUntil,
           userPrivateKey: wallet0.privateKey,
           signature,
+          useWebSocket: true, // Request WebSocket mode
         }),
       })
 
       const data = await response.json()
 
-      if (data.success) {
-        toast({
-          title: 'Transaction Sent!',
-          description: `Tx: ${data.txHash.slice(0, 20)}...`,
-          status: 'success',
-          duration: 10000,
-        })
+      if (data.success && data.useWebSocket && data.txId) {
+        // WebSocket mode - connect for real-time updates
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const host = window.location.host
+        const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?txId=${data.txId}`)
 
-        // Clear form
+        ws.onmessage = event => {
+          const update = JSON.parse(event.data)
+          console.log('WebSocket update:', update)
+
+          if (update.status === 'verified') {
+            toast({
+              title: '✅ Sent!',
+              description: `Verified in ${update.duration?.toFixed(2)}s`,
+              status: 'success',
+              duration: 4000,
+              containerStyle: {
+                bg: 'green.500',
+              },
+            })
+          } else if (update.status === 'confirmed') {
+            toast({
+              title: '✅ Settled!',
+              description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
+              status: 'success',
+              duration: 5000,
+              containerStyle: {
+                bg: 'green.500',
+              },
+            })
+
+            // Clear form and reload balance
+            setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+            setAmount('0.001')
+            setTimeout(() => loadBalance(), 3000)
+
+            // Close WebSocket
+            ws.close()
+            setIsSending(false)
+          }
+        }
+
+        ws.onerror = error => {
+          console.error('WebSocket error:', error)
+          toast({
+            title: 'Connection Error',
+            description: 'Lost connection to transaction status',
+            status: 'warning',
+            duration: 5000,
+          })
+          setIsSending(false)
+        }
+
+        ws.onclose = () => {
+          console.log('WebSocket closed')
+        }
+      } else if (data.success && data.txHash) {
+        // Synchronous mode - transaction already completed
+        console.log('Transaction completed synchronously (no WebSocket)')
+
+        // Show completion toasts
+        if (data.durations?.verified) {
+          toast({
+            title: '✅ Sent!',
+            description: `Verified in ${data.durations.verified.toFixed(2)}s`,
+            status: 'success',
+            duration: 4000,
+            containerStyle: {
+              bg: 'green.500',
+            },
+          })
+        }
+
+        setIsSending(false)
+
+        if (data.durations?.confirmed && data.txHash) {
+          toast({
+            title: '✅ Settled!',
+            description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
+            status: 'success',
+            duration: 5000,
+            containerStyle: {
+              bg: 'green.500',
+            },
+          })
+        }
+
+        // Clear form and reload balance
         setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
         setAmount('0.001')
-
-        // Reload balance
         setTimeout(() => loadBalance(), 3000)
       } else {
         throw new Error(data.error || 'Transaction failed')
@@ -192,7 +327,6 @@ export default function PaymentPage() {
         status: 'error',
         duration: 8000,
       })
-    } finally {
       setIsSending(false)
     }
   }
