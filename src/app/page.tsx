@@ -4,24 +4,23 @@ import {
   Container,
   Text,
   VStack,
-  Button,
   Box,
   Heading,
   SimpleGrid,
   Icon,
   Flex,
+  HStack,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
 import Link from 'next/link'
-import { useTranslation } from '@/hooks/useTranslation'
 import { FiEdit3, FiUpload, FiShield, FiEye } from 'react-icons/fi'
+import { FaGithub, FaNpm } from 'react-icons/fa'
 
 export default function Home() {
   const { isAuthenticated, user } = useW3PK()
-  const t = useTranslation()
 
   return (
-    <Container maxW="container.sm" py={20}>
+    <Container maxW="container.md" py={20}>
       <VStack spacing={8} align="stretch">
         {isAuthenticated ? (
           <>
@@ -33,11 +32,244 @@ export default function Home() {
                 It&apos;s a pleasure to have you here! You&apos;re at the right place if you want to
                 test the one and only w3pk brand new SDK. Sit back, relax, and enjoy!
               </Text>
-              <Text fontSize="sm" color="gray.500">
-                User ID: {user?.id}
+
+              <Text mt={12} fontSize="sm" color="gray.500">
+                User ID: <strong>{user?.id}</strong>
               </Text>
             </Box>
 
+            {/* Code Showcase */}
+            <Box
+              mt={6}
+              bg="gray.900"
+              borderRadius="3xl"
+              overflow="hidden"
+              position="relative"
+              mb={8}
+              _before={{
+                content: '""',
+                position: 'absolute',
+                inset: '-3px',
+                borderRadius: 'xl',
+                padding: '4px',
+                background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+              }}
+              boxShadow="0 0 40px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
+            >
+              <Box
+                bg="gray.900"
+                p={6}
+                fontFamily="monospace"
+                fontSize="sm"
+                overflowX="auto"
+                position="relative"
+                zIndex={1}
+              >
+                <Text color="#8c1c84" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    import
+                  </Text>{' '}
+                  {'{ '}
+                  <Text as="span" color="#8c1c84">
+                    createWeb3Passkey
+                  </Text>
+                  {' }'}{' '}
+                  <Text as="span" color="#45a2f8">
+                    from
+                  </Text>{' '}
+                  <Text as="span" color="#fbbf24">
+                    &apos;w3pk&apos;
+                  </Text>
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    const
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>{' '}
+                  <Text as="span" color="#45a2f8">
+                    =
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    createWeb3Passkey
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ({'{'}
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    apiBaseUrl
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;https://webauthn.w3hc.org&apos;
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ,
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" mb={2}>
+                  {'}'})
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Register'}
+                </Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    register
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ({'{'}
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    username
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;alice&apos;
+                  </Text>
+                  {/* <Text as="span" color="#9ca3af">
+                    ,
+                  </Text> */}
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  {/* <Text as="span" color="#45a2f8">
+                    ethereumAddress
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;0x0000000000000000000000000000000000000000&apos;
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ,
+                  </Text> */}
+                </Text>
+                <Text color="#9ca3af" mb={2}>
+                  {'}'})
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Login'}
+                </Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    login
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ()
+                  </Text>
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Logout'}
+                </Text>
+                <Text color="#9ca3af">
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    logout
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ()
+                  </Text>
+                </Text>
+              </Box>
+            </Box>
+
+            <Box pt={6} pb={12}>
+              {/* Social Links */}
+              <HStack spacing={4} justify="center" py={4} borderColor="gray.800" bg="gray.950">
+                <Link href="https://github.com/w3hc/w3pk" target="_blank" rel="noopener noreferrer">
+                  <Flex
+                    align="center"
+                    gap={2}
+                    px={4}
+                    py={2}
+                    borderRadius="md"
+                    bg="gray.800"
+                    _hover={{
+                      bg: 'gray.700',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 20px rgba(69, 162, 248, 0.3)',
+                    }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                  >
+                    <Icon as={FaGithub} boxSize={5} color="#45a2f8" />
+                    <Text fontSize="sm" fontWeight="medium">
+                      GitHub
+                    </Text>
+                  </Flex>
+                </Link>
+
+                <Link
+                  href="https://www.npmjs.com/package/w3pk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Flex
+                    align="center"
+                    gap={2}
+                    px={4}
+                    py={2}
+                    borderRadius="md"
+                    bg="gray.800"
+                    _hover={{
+                      bg: 'gray.700',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 20px rgba(140, 28, 132, 0.3)',
+                    }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                  >
+                    <Icon as={FaNpm} boxSize={5} color="#8c1c84" />
+                    <Text fontSize="sm" fontWeight="medium">
+                      NPM
+                    </Text>
+                  </Flex>
+                </Link>
+              </HStack>
+            </Box>
             {/* Action Boxes */}
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
               <Link href="/sig">
@@ -69,11 +301,11 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Sign messages
+                      Sign messages with the wallet stored on your own device
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Sign tx →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Sign →
                   </Text>
                 </Box>
               </Link>
@@ -107,11 +339,11 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      View all your addresses
+                      View all the addresses generated from your HD wallet
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Go →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    View →
                   </Text>
                 </Box>
               </Link>
@@ -145,11 +377,11 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      ERC-5564 privacy payments
+                      Manage your stealth address: they're all ERC-5564-compliant
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Go →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Go stealth →
                   </Text>
                 </Box>
               </Link>
@@ -183,11 +415,11 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Send onchain transactions{' '}
+                      Seamlessly send and receive xDAI, gas fees is on us! ;)
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Go →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Send →
                   </Text>
                 </Box>
               </Link>
@@ -217,15 +449,15 @@ export default function Home() {
                         <Icon as={FiUpload} color="white" boxSize={5} />
                       </Box>
                       <Heading as="h3" size="md" color="white">
-                        RPC endpoints
+                        RPC enpoints
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Play around with RPC endpoints{' '}
+                      Get all RPC endpoints for any network and check EIP-7702 compatibility
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Go →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Check →
                   </Text>
                 </Box>
               </Link>
@@ -259,11 +491,11 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Smart wallet with gasless session keys
+                      Access your Safe onchain wallet, manage session keys, etc
                     </Text>
                   </Box>
-                  <Text color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Go →
+                  <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
+                    Access →
                   </Text>
                 </Box>
               </Link>
@@ -280,17 +512,252 @@ export default function Home() {
             </Box>
           </>
         ) : (
-          <Box bg="whiteAlpha.50" p={6} borderRadius="md" textAlign="center">
-            <Heading as="h1" size="xl" mb={4}>
-              Hello Anon!
-            </Heading>
-            <Text mb={6} color="gray.400">
-              Not your keys, not your coins.
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              Register or login
-            </Text>
-          </Box>
+          <VStack spacing={8} align="stretch">
+            {/* <Box bg="whiteAlpha.50" p={6} borderRadius="md" textAlign="center" mb={10}> */}
+            <Box p={6} borderRadius="md" textAlign="center" mb={8}>
+              <Heading as="h1" size="xl" mb={4}>
+                Hello Anon!
+              </Heading>
+              <Text mb={6} color="gray.400">
+                Not your keys, not your coins.
+              </Text>
+              <Text fontSize="sm" color="gray.500">
+                Please register or login
+              </Text>
+            </Box>
+
+            <Box
+              mt={6}
+              bg="gray.900"
+              borderRadius="3xl"
+              overflow="hidden"
+              position="relative"
+              mb={8}
+              _before={{
+                content: '""',
+                position: 'absolute',
+                inset: '-3px',
+                borderRadius: 'xl',
+                padding: '4px',
+                background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+              }}
+              boxShadow="0 0 40px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
+            >
+              <Box
+                bg="gray.900"
+                p={6}
+                fontFamily="monospace"
+                fontSize="sm"
+                overflowX="auto"
+                position="relative"
+                zIndex={1}
+              >
+                <Text color="#8c1c84" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    import
+                  </Text>{' '}
+                  {'{ '}
+                  <Text as="span" color="#8c1c84">
+                    createWeb3Passkey
+                  </Text>
+                  {' }'}{' '}
+                  <Text as="span" color="#45a2f8">
+                    from
+                  </Text>{' '}
+                  <Text as="span" color="#fbbf24">
+                    &apos;w3pk&apos;
+                  </Text>
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    const
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>{' '}
+                  <Text as="span" color="#45a2f8">
+                    =
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    createWeb3Passkey
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ({'{'}
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    apiBaseUrl
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;https://webauthn.w3hc.org&apos;
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ,
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" mb={2}>
+                  {'}'})
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Register'}
+                </Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    register
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ({'{'}
+                  </Text>
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    username
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;alice&apos;
+                  </Text>
+                  {/* <Text as="span" color="#9ca3af">
+                    ,
+                  </Text> */}
+                </Text>
+                <Text color="#9ca3af" ml={4} mb={1}>
+                  {/* <Text as="span" color="#45a2f8">
+                    ethereumAddress
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    :{' '}
+                  </Text>
+                  <Text as="span" color="#fbbf24">
+                    &apos;0x0000000000000000000000000000000000000000&apos;
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ,
+                  </Text> */}
+                </Text>
+                <Text color="#9ca3af" mb={2}>
+                  {'}'})
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Login'}
+                </Text>
+                <Text color="#9ca3af" mb={1}>
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    login
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ()
+                  </Text>
+                </Text>
+                <Text mb={2}>&nbsp;</Text>
+                <Text color="#6b7280" mb={1}>
+                  {'// Logout'}
+                </Text>
+                <Text color="#9ca3af">
+                  <Text as="span" color="#45a2f8">
+                    await
+                  </Text>{' '}
+                  <Text as="span" color="#8c1c84">
+                    w3pk
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    .
+                  </Text>
+                  <Text as="span" color="#8c1c84">
+                    logout
+                  </Text>
+                  <Text as="span" color="#9ca3af">
+                    ()
+                  </Text>
+                </Text>
+              </Box>
+            </Box>
+
+            <Box pt={6} pb={12}>
+              {/* Social Links */}
+              <HStack spacing={4} justify="center" py={4} borderColor="gray.800" bg="gray.950">
+                <Link href="https://github.com/w3hc/w3pk" target="_blank" rel="noopener noreferrer">
+                  <Flex
+                    align="center"
+                    gap={2}
+                    px={4}
+                    py={2}
+                    borderRadius="md"
+                    bg="gray.800"
+                    _hover={{
+                      bg: 'gray.700',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 20px rgba(69, 162, 248, 0.3)',
+                    }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                  >
+                    <Icon as={FaGithub} boxSize={5} color="#45a2f8" />
+                    <Text fontSize="sm" fontWeight="medium">
+                      GitHub
+                    </Text>
+                  </Flex>
+                </Link>
+
+                <Link
+                  href="https://www.npmjs.com/package/w3pk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Flex
+                    align="center"
+                    gap={2}
+                    px={4}
+                    py={2}
+                    borderRadius="md"
+                    bg="gray.800"
+                    _hover={{
+                      bg: 'gray.700',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 20px rgba(140, 28, 132, 0.3)',
+                    }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                  >
+                    <Icon as={FaNpm} boxSize={5} color="#8c1c84" />
+                    <Text fontSize="sm" fontWeight="medium">
+                      NPM
+                    </Text>
+                  </Flex>
+                </Link>
+              </HStack>
+            </Box>
+          </VStack>
         )}
       </VStack>
     </Container>
