@@ -189,7 +189,7 @@ export default function StealthAddresses() {
   }
 
   return (
-    <Container maxW="container.xl" py={10}>
+    <Container maxW="container.md" py={10}>
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <Box textAlign="center">

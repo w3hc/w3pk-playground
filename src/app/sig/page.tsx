@@ -102,7 +102,7 @@ export default function Web3() {
 
   if (!isAuthenticated) {
     return (
-      <Container maxW="container.sm" py={20}>
+      <Container maxW="container.md" py={20}>
         <VStack spacing={8} align="stretch">
           <Box bg="whiteAlpha.50" p={6} borderRadius="md" textAlign="center">
             <Alert status="warning" bg="transparent" color="orange.200">
