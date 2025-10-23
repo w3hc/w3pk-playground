@@ -377,7 +377,7 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Manage your stealth address: they're all ERC-5564-compliant
+                      Manage your stealth address: they&apos;re all ERC-5564-compliant
                     </Text>
                   </Box>
                   <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
