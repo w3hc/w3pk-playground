@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'User private key required',
-          details: 'The user must provide their private key to sign this transaction as the Safe owner',
+          details:
+            'The user must provide their private key to sign this transaction as the Safe owner',
         },
         { status: 400 }
       )

@@ -44,10 +44,10 @@ pnpm build
 ## Documentation References
 
 - [React 19](https://react.dev/blog/2024/12/05/react-19) - Latest React features
-- [Next.js 15](https://nextjs.org/docs) - React framework
+- [Next.js 16.0.0](https://nextjs.org/docs) - React framework
 - [Chakra UI v2](https://v2.chakra-ui.com/) - UI component library
 - [Ethers.js v6](https://docs.ethers.org/v6/) - Ethereum library
-- [w3pk v0.5.2](https://github.com/w3hc/w3pk) - w3pk SDK
+- [w3pk v0.6.0](https://github.com/w3hc/w3pk) - w3pk SDK
 
 ## Support
 

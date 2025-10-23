@@ -24,7 +24,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
@@ -76,13 +76,7 @@ export default function PaymentPage() {
   }, [isAuthenticated, user])
 
   // Load Safe balance
-  useEffect(() => {
-    if (safeAddress) {
-      loadBalance()
-    }
-  }, [safeAddress])
-
-  const loadBalance = async () => {
+  const loadBalance = useCallback(async () => {
     if (!safeAddress) return
     setIsLoadingBalance(true)
 
@@ -105,7 +99,13 @@ export default function PaymentPage() {
     } finally {
       setIsLoadingBalance(false)
     }
-  }
+  }, [safeAddress])
+
+  useEffect(() => {
+    if (safeAddress) {
+      loadBalance()
+    }
+  }, [safeAddress, loadBalance])
 
   const sendTransaction = async () => {
     if (!safeAddress || !sessionKey || !recipient || !amount) {
@@ -319,7 +319,7 @@ export default function PaymentPage() {
                 <Input
                   placeholder="0x..."
                   value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  onChange={e => setRecipient(e.target.value)}
                   fontFamily="mono"
                   isDisabled={!sessionKey || isSessionKeyExpired}
                 />
@@ -332,7 +332,7 @@ export default function PaymentPage() {
                   step="0.001"
                   placeholder="0.01"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={e => setAmount(e.target.value)}
                   isDisabled={!sessionKey || isSessionKeyExpired}
                 />
               </FormControl>

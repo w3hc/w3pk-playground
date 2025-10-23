@@ -40,10 +40,7 @@ export async function POST(request: NextRequest) {
 
     const rpcUrl = rpcUrls[chainId]
     if (!rpcUrl) {
-      return NextResponse.json(
-        { error: `Unsupported chain ID: ${chainId}` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Unsupported chain ID: ${chainId}` }, { status: 400 })
     }
 
     // Connect to RPC and fetch balance
@@ -75,38 +72,38 @@ export async function POST(request: NextRequest) {
 
 /**
  * Implementation Notes:
- * 
+ *
  * To complete this endpoint:
- * 
+ *
  * 1. Set up RPC connections:
- * 
+ *
  * import { ethers } from 'ethers'
- * 
+ *
  * const rpcUrls: Record<number, string> = {
  *   10200: 'https://rpc.chiadochain.net', // Gnosis Chiado
  *   // Add other chains...
  * }
- * 
+ *
  * const provider = new ethers.JsonRpcProvider(rpcUrls[chainId])
- * 
+ *
  * 2. Fetch balance:
- * 
+ *
  * const balance = await provider.getBalance(safeAddress)
  * const balanceInWei = balance.toString()
- * 
+ *
  * 3. Optionally fetch token balances:
- * 
+ *
  * // For ERC20 tokens
  * const tokenContract = new ethers.Contract(
  *   tokenAddress,
  *   ['function balanceOf(address) view returns (uint256)'],
  *   provider
  * )
- * 
+ *
  * const tokenBalance = await tokenContract.balanceOf(safeAddress)
- * 
+ *
  * 4. Return comprehensive balance data:
- * 
+ *
  * return {
  *   native: balanceInWei,
  *   tokens: [
