@@ -48,6 +48,7 @@ export default function SafePage() {
 
   // State
   const [safeAddress, setSafeAddress] = useState<string | null>(null)
+  const [safeOwner, setSafeOwner] = useState<string | null>(null)
   const [safeBalance, setSafeBalance] = useState<string>('0')
   const [derivedAddresses, setDerivedAddresses] = useState<string[]>([])
   const [sessionKey, setSessionKey] = useState<SessionKey | null>(null)
@@ -74,6 +75,7 @@ export default function SafePage() {
       if (saved) {
         const data = JSON.parse(saved)
         setSafeAddress(data.safeAddress)
+        setSafeOwner(data.safeOwner || null)
         if (data.sessionKey) {
           setSessionKey(data.sessionKey)
         }
@@ -81,12 +83,8 @@ export default function SafePage() {
     }
   }, [isAuthenticated, user])
 
-  // Get derived addresses
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadDerivedAddresses()
-    }
-  }, [isAuthenticated])
+  // Get derived addresses - removed automatic loading to avoid prompting for auth on page load
+  // Addresses are derived on-demand when needed (e.g., when deploying Safe or creating session key)
 
   // Load Safe balance
   useEffect(() => {
@@ -94,26 +92,6 @@ export default function SafePage() {
       loadBalance()
     }
   }, [safeAddress])
-
-  const loadDerivedAddresses = async () => {
-    try {
-      // Derive multiple addresses (index 0 and 1)
-      const wallet0 = await deriveWallet(0)
-      const wallet1 = await deriveWallet(1)
-
-      const addresses = [wallet0.address, wallet1.address]
-      setDerivedAddresses(addresses)
-      console.log('Derived addresses:', addresses)
-    } catch (error) {
-      console.error('Error loading derived addresses:', error)
-      toast({
-        title: 'Derivation Error',
-        description: 'Failed to derive addresses. Please try logging in again.',
-        status: 'error',
-        duration: 5000,
-      })
-    }
-  }
 
   const loadBalance = async () => {
     if (!safeAddress) return
@@ -141,24 +119,19 @@ export default function SafePage() {
   }
 
   const deploySafe = async () => {
-    if (!derivedAddresses[0]) {
-      toast({
-        title: 'Error',
-        description: 'Please wait for derived addresses to load',
-        status: 'error',
-        duration: 5000,
-      })
-      return
-    }
-
     setIsDeploying(true)
 
     try {
+      // Derive wallet on-demand when deploying Safe
+      const wallet0 = await deriveWallet(0)
+      const wallet1 = await deriveWallet(1)
+      setDerivedAddresses([wallet0.address, wallet1.address])
+
       const response = await fetch('/api/safe/deploy-safe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: derivedAddresses[0],
+          userAddress: wallet0.address,
           chainId: 10200, // Gnosis Chiado
         }),
       })
@@ -167,12 +140,14 @@ export default function SafePage() {
 
       if (data.success) {
         setSafeAddress(data.safeAddress)
+        setSafeOwner(wallet0.address)
 
         // Save to localStorage
         localStorage.setItem(
           `safe_${user?.id}`,
           JSON.stringify({
             safeAddress: data.safeAddress,
+            safeOwner: wallet0.address,
           })
         )
 
@@ -201,10 +176,10 @@ export default function SafePage() {
   }
 
   const createSessionKey = async () => {
-    if (!safeAddress || !derivedAddresses[1]) {
+    if (!safeAddress) {
       toast({
         title: 'Error',
-        description: 'Please deploy Safe first and ensure derived addresses are loaded',
+        description: 'Please deploy Safe first',
         status: 'error',
         duration: 5000,
       })
@@ -214,14 +189,19 @@ export default function SafePage() {
     setIsCreatingSession(true)
 
     try {
+      // Derive addresses on-demand when creating session key
+      const wallet0 = await deriveWallet(0)
+      const wallet1 = await deriveWallet(1)
+      setDerivedAddresses([wallet0.address, wallet1.address])
+
       const response = await fetch('/api/safe/create-session-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: derivedAddresses[0],
+          userAddress: wallet0.address,
           safeAddress,
           chainId: 10200,
-          sessionKeyAddress: derivedAddresses[1], // Use derived address[1] as session key
+          sessionKeyAddress: wallet1.address, // Use derived address[1] as session key
           sessionKeyIndex: 1,
         }),
       })
@@ -336,7 +316,7 @@ export default function SafePage() {
         setModuleEnableTxData(null)
 
         // Wait a bit for the transaction to be mined
-        await new Promise((resolve) => setTimeout(resolve, 3000))
+        await new Promise(resolve => setTimeout(resolve, 3000))
 
         // Try creating session key again
         await createSessionKey()
@@ -393,7 +373,7 @@ export default function SafePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: derivedAddresses[0],
+          userAddress: ownerWallet.address,
           safeAddress,
           chainId: 10200,
           to: recipient,
@@ -499,7 +479,9 @@ export default function SafePage() {
             ) : (
               <VStack spacing={4} align="stretch">
                 <Box>
-                  <Text fontWeight="bold" mb={2}>Safe Address:</Text>
+                  <Text fontWeight="bold" mb={2}>
+                    Safe Address:
+                  </Text>
                   <HStack>
                     <Text fontFamily="mono" fontSize="sm">
                       {safeAddress}
@@ -515,7 +497,9 @@ export default function SafePage() {
                       <Spinner size="sm" />
                     ) : (
                       <>
-                        <Text fontFamily="mono">{parseFloat(ethers.formatEther(safeBalance)).toFixed(6)} xDAI</Text>
+                        <Text fontFamily="mono">
+                          {parseFloat(ethers.formatEther(safeBalance)).toFixed(6)} xDAI
+                        </Text>
                         <Button size="xs" onClick={loadBalance} variant="ghost">
                           Refresh
                         </Button>
@@ -525,9 +509,11 @@ export default function SafePage() {
                 </HStack>
 
                 <Box>
-                  <Text fontWeight="bold" mb={2}>Owner:</Text>
+                  <Text fontWeight="bold" mb={2}>
+                    Owner:
+                  </Text>
                   <Text fontFamily="mono" fontSize="sm">
-                    {derivedAddresses[0]}
+                    {safeOwner || 'Not available'}
                   </Text>
                 </Box>
               </VStack>
@@ -554,7 +540,8 @@ export default function SafePage() {
                         <Box>
                           <AlertTitle>Module Enable Required</AlertTitle>
                           <AlertDescription fontSize="sm">
-                            Smart Sessions module needs to be enabled on your Safe before creating session keys
+                            Smart Sessions module needs to be enabled on your Safe before creating
+                            session keys
                           </AlertDescription>
                         </Box>
                       </Alert>
@@ -650,13 +637,16 @@ export default function SafePage() {
                       borderColor="gray.700"
                     >
                       <HStack mb={2}>
-                        <Icon as={FiCheckCircle} color={isSessionKeyExpired ? "red.400" : "purple.400"} />
+                        <Icon
+                          as={FiCheckCircle}
+                          color={isSessionKeyExpired ? 'red.400' : 'purple.400'}
+                        />
                         <Text fontSize="sm" fontWeight="bold">
                           Status
                         </Text>
                       </HStack>
-                      <Badge colorScheme={isSessionKeyExpired ? "red" : "green"} fontSize="md">
-                        {isSessionKeyExpired ? "Expired" : "Active"}
+                      <Badge colorScheme={isSessionKeyExpired ? 'red' : 'green'} fontSize="md">
+                        {isSessionKeyExpired ? 'Expired' : 'Active'}
                       </Badge>
                     </Box>
                   </SimpleGrid>
@@ -669,7 +659,8 @@ export default function SafePage() {
                       <Box flex="1">
                         <AlertTitle>Session Key Expired</AlertTitle>
                         <AlertDescription fontSize="sm">
-                          This session key has expired. Create a new one to continue making transactions.
+                          This session key has expired. Create a new one to continue making
+                          transactions.
                         </AlertDescription>
                       </Box>
                     </Alert>
@@ -718,7 +709,7 @@ export default function SafePage() {
                   <Input
                     placeholder="0x..."
                     value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
+                    onChange={e => setRecipient(e.target.value)}
                     fontFamily="mono"
                   />
                 </FormControl>
@@ -730,7 +721,7 @@ export default function SafePage() {
                     step="0.001"
                     placeholder="0.01"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={e => setAmount(e.target.value)}
                   />
                 </FormControl>
 
@@ -750,7 +741,8 @@ export default function SafePage() {
                   <Alert status="warning" bg="orange.900" borderRadius="md">
                     <AlertIcon />
                     <Text fontSize="sm">
-                      Your session key has expired. Please create a new one above to send transactions.
+                      Your session key has expired. Please create a new one above to send
+                      transactions.
                     </Text>
                   </Alert>
                 )}
