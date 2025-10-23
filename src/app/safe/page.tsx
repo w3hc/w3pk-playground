@@ -26,7 +26,7 @@ import {
   Icon,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import { FiShield, FiKey, FiSend, FiCheckCircle, FiClock, FiDollarSign } from 'react-icons/fi'
 
@@ -87,13 +87,7 @@ export default function SafePage() {
   // Addresses are derived on-demand when needed (e.g., when deploying Safe or creating session key)
 
   // Load Safe balance
-  useEffect(() => {
-    if (safeAddress) {
-      loadBalance()
-    }
-  }, [safeAddress])
-
-  const loadBalance = async () => {
+  const loadBalance = useCallback(async () => {
     if (!safeAddress) return
     setIsLoadingBalance(true)
 
@@ -116,7 +110,13 @@ export default function SafePage() {
     } finally {
       setIsLoadingBalance(false)
     }
-  }
+  }, [safeAddress])
+
+  useEffect(() => {
+    if (safeAddress) {
+      loadBalance()
+    }
+  }, [safeAddress, loadBalance])
 
   const deploySafe = async () => {
     setIsDeploying(true)
