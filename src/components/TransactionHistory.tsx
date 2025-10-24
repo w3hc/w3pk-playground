@@ -253,10 +253,7 @@ export function TransactionHistory({
                       fontSize="xs"
                       cursor="pointer"
                       onClick={() =>
-                        copyToClipboard(
-                          tx.direction === 'outgoing' ? tx.to : tx.from,
-                          'Address'
-                        )
+                        copyToClipboard(tx.direction === 'outgoing' ? tx.to : tx.from, 'Address')
                       }
                       _hover={{ color: 'purple.400' }}
                       transition="color 0.2s"
