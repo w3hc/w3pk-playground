@@ -189,7 +189,7 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
 
       await w3pk.register({
         username,
-        ethereumAddress: '0x0000000000000000000000000000000000000000',
+        ethereumAddress: '0x0000000000000000000000000000000000000000', // TODO: fix thi in w3pk
       })
       console.log('Registration successful, address:', w3pk.walletAddress)
 
