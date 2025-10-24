@@ -23,6 +23,10 @@ interface TransactionHistoryProps {
   isLoading: boolean
   onRefresh: () => void
   safeAddress: string
+  isError?: boolean
+  error?: Error | null
+  lastUpdated?: Date | null
+  dataSource?: 'localStorage' | 'blockchain' // Where the data is coming from
 }
 
 export function TransactionHistory({
@@ -30,6 +34,10 @@ export function TransactionHistory({
   isLoading,
   onRefresh,
   safeAddress,
+  isError = false,
+  error = null,
+  lastUpdated = null,
+  dataSource = 'localStorage',
 }: TransactionHistoryProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -75,7 +83,41 @@ export function TransactionHistory({
         <CardBody>
           <VStack spacing={4} py={8}>
             <Spinner size="lg" color="purple.500" />
-            <Text color="gray.400">Loading transactions...</Text>
+            <Text color="gray.400">Loading transactions from {dataSource}...</Text>
+          </VStack>
+        </CardBody>
+      </Card>
+    )
+  }
+
+  if (isError && error) {
+    return (
+      <Card bg="gray.800" borderColor="gray.700">
+        <CardHeader>
+          <HStack justify="space-between">
+            <Heading size="md">Transaction History</Heading>
+            <Tooltip label="Retry">
+              <IconButton
+                aria-label="Retry"
+                icon={<FiRefreshCw />}
+                size="sm"
+                variant="ghost"
+                onClick={onRefresh}
+              />
+            </Tooltip>
+          </HStack>
+        </CardHeader>
+        <CardBody>
+          <VStack spacing={4} py={8}>
+            <Text color="red.400" fontWeight="bold">
+              Failed to load transactions
+            </Text>
+            <Text color="gray.400" fontSize="sm" textAlign="center">
+              {error.message}
+            </Text>
+            <Text color="gray.500" fontSize="xs">
+              Click the refresh button to try again
+            </Text>
           </VStack>
         </CardBody>
       </Card>
@@ -86,17 +128,31 @@ export function TransactionHistory({
     <Card bg="gray.800" borderColor="gray.700">
       <CardHeader>
         <HStack justify="space-between">
-          <Heading size="md">Transaction History</Heading>
-          <Tooltip label="Refresh transactions">
-            <IconButton
-              aria-label="Refresh transactions"
-              icon={<FiRefreshCw />}
-              size="sm"
-              variant="ghost"
-              onClick={onRefresh}
-              isLoading={isLoading}
-            />
-          </Tooltip>
+          <VStack align="start" spacing={0}>
+            <Heading size="md">Transaction History</Heading>
+            {lastUpdated && (
+              <Text fontSize="xs" color="gray.500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </Text>
+            )}
+          </VStack>
+          <HStack spacing={2}>
+            {dataSource === 'blockchain' && (
+              <Badge colorScheme="purple" fontSize="xs">
+                On-chain
+              </Badge>
+            )}
+            <Tooltip label="Refresh transactions">
+              <IconButton
+                aria-label="Refresh transactions"
+                icon={<FiRefreshCw />}
+                size="sm"
+                variant="ghost"
+                onClick={onRefresh}
+                isLoading={isLoading}
+              />
+            </Tooltip>
+          </HStack>
         </HStack>
       </CardHeader>
       <CardBody>
@@ -109,9 +165,9 @@ export function TransactionHistory({
           </Box>
         ) : (
           <VStack spacing={3} align="stretch">
-            {transactions.map(tx => (
+            {transactions.map((tx, index) => (
               <Box
-                key={tx.txId}
+                key={`${tx.txHash}-${tx.direction}-${index}`}
                 p={4}
                 bg="gray.900"
                 borderRadius="md"
@@ -133,7 +189,11 @@ export function TransactionHistory({
                     )}
                     <VStack align="start" spacing={0}>
                       <Text fontWeight="bold" fontSize="sm">
-                        {tx.direction === 'outgoing' ? 'Sent' : 'Received'}
+                        {tx.isSelfTransfer
+                          ? 'Self-Transfer'
+                          : tx.direction === 'outgoing'
+                            ? 'Sent'
+                            : 'Received'}
                       </Text>
                       <Text fontSize="xs" color="gray.500">
                         {formatTime(tx.timestamp)}
