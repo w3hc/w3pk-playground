@@ -628,7 +628,9 @@ export default function SafePage() {
                     <Text fontFamily="mono" fontSize="sm" wordBreak="break-all">
                       {safeAddress}
                     </Text>
-                    <Badge colorScheme="green" alignSelf="flex-start">Active</Badge>
+                    <Badge colorScheme="green" alignSelf="flex-start">
+                      Active
+                    </Badge>
                   </VStack>
                 </Box>
 
