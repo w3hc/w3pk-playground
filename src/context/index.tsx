@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, memo, Suspense } from 'react'
+import { type ReactNode, memo } from 'react'
 import { ChakraProvider, extendTheme, Center } from '@chakra-ui/react'
 import Spinner from '@/components/Spinner'
 import dynamic from 'next/dynamic'
@@ -33,15 +33,7 @@ const W3pkProvider = dynamic(() => import('./W3PK').then(mod => ({ default: mod.
 const ContextProvider = memo(function ContextProvider({ children }: { children: ReactNode }) {
   return (
     <ChakraProvider theme={theme}>
-      <Suspense
-        fallback={
-          <Center h="100vh">
-            <Spinner size="200px" />
-          </Center>
-        }
-      >
-        <W3pkProvider>{children}</W3pkProvider>
-      </Suspense>
+      <W3pkProvider>{children}</W3pkProvider>
     </ChakraProvider>
   )
 })
