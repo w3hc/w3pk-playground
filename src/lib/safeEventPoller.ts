@@ -52,10 +52,11 @@ export async function querySafeTransactionsFromBlockscout(
       console.log(`   Found ${txData.result.length} regular transactions`)
 
       const regularTxs = txData.result
-        .filter((tx: any) =>
-          tx.value !== '0' &&
-          tx.to?.toLowerCase() === safeAddress.toLowerCase() &&
-          tx.from?.toLowerCase() !== safeAddress.toLowerCase() // Not from itself
+        .filter(
+          (tx: any) =>
+            tx.value !== '0' &&
+            tx.to?.toLowerCase() === safeAddress.toLowerCase() &&
+            tx.from?.toLowerCase() !== safeAddress.toLowerCase() // Not from itself
         )
         .map((tx: any) => {
           incomingTxHashes.add(tx.hash) // Track this incoming transaction
@@ -73,9 +74,6 @@ export async function querySafeTransactionsFromBlockscout(
         })
 
       console.log(`   Filtered to ${regularTxs.length} incoming transactions`)
-      if (regularTxs.length > 0) {
-        console.log(`   Incoming tx hashes:`, Array.from(incomingTxHashes).map(h => h.substring(0, 10)))
-      }
       transactions.push(...regularTxs)
     }
 
@@ -106,7 +104,9 @@ export async function querySafeTransactionsFromBlockscout(
       )
 
       // Also add internal incoming hashes to the set to prevent duplicates
-      internalIncoming.forEach((tx: SafeTransactionEvent) => incomingTxHashes.add(tx.transactionHash))
+      internalIncoming.forEach((tx: SafeTransactionEvent) =>
+        incomingTxHashes.add(tx.transactionHash)
+      )
 
       // Filter outgoing: exclude transactions that are already counted as incoming
       const internalOutgoing = internalTxs.filter(
@@ -115,19 +115,12 @@ export async function querySafeTransactionsFromBlockscout(
           !incomingTxHashes.has(tx.transactionHash) // Exclude if already in incoming regular txs
       )
 
-      console.log(`   Filtered to ${internalIncoming.length} incoming internal transactions (excl. self-transfers)`)
-      console.log(`   Filtered to ${internalOutgoing.length} outgoing internal transactions (incl. self-transfers)`)
-
-      // Debug: log some sample transactions to understand duplicates
-      if (internalOutgoing.length > 0) {
-        const sample = internalOutgoing.slice(0, 3)
-        console.log(`   Sample outgoing internal txs:`, sample.map((t: SafeTransactionEvent) => ({
-          hash: t.transactionHash ? t.transactionHash.substring(0, 10) : 'undefined',
-          from: t.from ? t.from.substring(0, 10) : 'undefined',
-          to: t.to ? t.to.substring(0, 10) : 'undefined',
-          value: t.value || '0'
-        })))
-      }
+      console.log(
+        `   Filtered to ${internalIncoming.length} incoming internal transactions (excl. self-transfers)`
+      )
+      console.log(
+        `   Filtered to ${internalOutgoing.length} outgoing internal transactions (incl. self-transfers)`
+      )
 
       transactions.push(...internalIncoming, ...internalOutgoing)
     }
@@ -156,22 +149,31 @@ export async function querySafeTransactionsFromBlockscout(
 
       if (isSafeFrom) {
         // Keep the version where Safe is the sender
-        return index === self.findIndex(
-          t => t.transactionHash === tx.transactionHash &&
-               t.value === tx.value &&
-               t.from.toLowerCase() === safeAddress.toLowerCase()
+        return (
+          index ===
+          self.findIndex(
+            t =>
+              t.transactionHash === tx.transactionHash &&
+              t.value === tx.value &&
+              t.from.toLowerCase() === safeAddress.toLowerCase()
+          )
         )
       } else if (isSafeTo) {
         // Keep the version where Safe is the receiver
-        return index === self.findIndex(
-          t => t.transactionHash === tx.transactionHash &&
-               t.value === tx.value &&
-               t.to.toLowerCase() === safeAddress.toLowerCase()
+        return (
+          index ===
+          self.findIndex(
+            t =>
+              t.transactionHash === tx.transactionHash &&
+              t.value === tx.value &&
+              t.to.toLowerCase() === safeAddress.toLowerCase()
+          )
         )
       } else {
         // Neither from nor to is Safe - keep first occurrence
-        return index === self.findIndex(
-          t => t.transactionHash === tx.transactionHash && t.value === tx.value
+        return (
+          index ===
+          self.findIndex(t => t.transactionHash === tx.transactionHash && t.value === tx.value)
         )
       }
     })

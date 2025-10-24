@@ -214,9 +214,7 @@ export function TransactionHistory({
                   </HStack>
 
                   <HStack justify="space-between">
-                    <Text color="gray.400">
-                      {tx.direction === 'outgoing' ? 'To:' : 'From:'}
-                    </Text>
+                    <Text color="gray.400">{tx.direction === 'outgoing' ? 'To:' : 'From:'}</Text>
                     <Text fontFamily="mono" fontSize="xs">
                       {formatAddress(tx.direction === 'outgoing' ? tx.to : tx.from)}
                     </Text>
