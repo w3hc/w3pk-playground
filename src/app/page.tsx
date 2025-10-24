@@ -29,125 +29,127 @@ export default function Home() {
                 Welcome {user?.displayName || user?.username}!
               </Heading>
               <Text color="gray.400" mb={2}>
-                It&apos;s a pleasure to have you here! You&apos;re at the right place if you want to
-                test the one and only w3pk brand new SDK. Sit back, relax, and enjoy!
+                It&apos;s a pleasure to have you here!
+              </Text>
+              <Text color="gray.400" mb={0}>
+                Sit back, relax, and enjoy!
               </Text>
 
-              <Text mt={12} fontSize="sm" color="gray.500">
-                User ID: <strong>{user?.id}</strong>
+              <Text mt={12} fontSize="sm" color="white">
+                <strong>{user?.id}</strong>
               </Text>
             </Box>
 
             {/* Code Showcase */}
             <Box
-              mt={6}
-              bg="gray.900"
+              mt={3}
+              // bg="gray.900"
               borderRadius="3xl"
               overflow="hidden"
               position="relative"
-              mb={8}
-              _before={{
-                content: '""',
-                position: 'absolute',
-                inset: '-3px',
-                borderRadius: 'xl',
-                padding: '4px',
-                background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-              }}
-              boxShadow="0 0 40px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
+              // mb={8}
+              // _before={{
+              //   content: '""',
+              //   position: 'absolute',
+              //   inset: '-3px',
+              //   borderRadius: 'xl',
+              //   padding: '4px',
+              //   background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
+              //   WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              //   WebkitMaskComposite: 'xor',
+              //   maskComposite: 'exclude',
+              // }}
+              // boxShadow="0 0 80px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
             >
               <Box
                 bg="gray.900"
-                p={6}
+                p={12}
                 fontFamily="monospace"
-                fontSize="sm"
-                overflowX="auto"
-                position="relative"
-                zIndex={1}
+                fontSize="md"
+                // overflowX="auto"
+                // position="relative"
+                // zIndex={1}
               >
-                <Text color="#8c1c84" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     import
                   </Text>{' '}
                   {'{ '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     createWeb3Passkey
                   </Text>
                   {' }'}{' '}
-                  <Text as="span" color="#45a2f8">
+                  <Text as="span" color="#ffffff">
                     from
                   </Text>{' '}
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;w3pk&apos;
                   </Text>
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     const
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>{' '}
-                  <Text as="span" color="#45a2f8">
+                  <Text as="span" color="#9ca3af">
                     =
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     createWeb3Passkey
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ({'{'}
                   </Text>
                 </Text>
-                <Text color="#9ca3af" ml={4} mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" ml={4} mb={1}>
+                  <Text as="span" color="#ffffff">
                     apiBaseUrl
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     :{' '}
                   </Text>
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;https://webauthn.w3hc.org&apos;
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ,
                   </Text>
                 </Text>
-                <Text color="#9ca3af" mb={2}>
+                <Text color="#ffffff" mb={2}>
                   {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
                   {'// Register'}
                 </Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     register
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ({'{'}
                   </Text>
                 </Text>
-                <Text color="#9ca3af" ml={4} mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" ml={4} mb={1}>
+                  <Text as="span" color="#ffffff">
                     username
                   </Text>
                   <Text as="span" color="#9ca3af">
                     :{' '}
                   </Text>
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;alice&apos;
                   </Text>
                   {/* <Text as="span" color="#9ca3af">
@@ -168,27 +170,27 @@ export default function Home() {
                     ,
                   </Text> */}
                 </Text>
-                <Text color="#9ca3af" mb={2}>
+                <Text color="#ffffff" mb={2}>
                   {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
                   {'// Login'}
                 </Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     login
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ()
                   </Text>
                 </Text>
@@ -196,20 +198,20 @@ export default function Home() {
                 <Text color="#6b7280" mb={1}>
                   {'// Logout'}
                 </Text>
-                <Text color="#9ca3af">
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff">
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     logout
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ()
                   </Text>
                 </Text>
@@ -526,115 +528,116 @@ export default function Home() {
               </Text>
             </Box>
 
+            {/* Code Showcase */}
             <Box
-              mt={6}
-              bg="gray.900"
+              mt={3}
+              // bg="gray.900"
               borderRadius="3xl"
               overflow="hidden"
               position="relative"
-              mb={8}
-              _before={{
-                content: '""',
-                position: 'absolute',
-                inset: '-3px',
-                borderRadius: 'xl',
-                padding: '4px',
-                background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-              }}
-              boxShadow="0 0 40px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
+              // mb={8}
+              // _before={{
+              //   content: '""',
+              //   position: 'absolute',
+              //   inset: '-3px',
+              //   borderRadius: 'xl',
+              //   padding: '4px',
+              //   background: 'linear-gradient(135deg, #8c1c84 0%, #45a2f8 50%, #8c1c84 100%)',
+              //   WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              //   WebkitMaskComposite: 'xor',
+              //   maskComposite: 'exclude',
+              // }}
+              // boxShadow="0 0 80px rgba(69, 162, 248, 0.3), 0 0 80px rgba(140, 28, 132, 0.2)"
             >
               <Box
                 bg="gray.900"
-                p={6}
+                p={12}
                 fontFamily="monospace"
-                fontSize="sm"
-                overflowX="auto"
-                position="relative"
-                zIndex={1}
+                fontSize="md"
+                // overflowX="auto"
+                // position="relative"
+                // zIndex={1}
               >
-                <Text color="#8c1c84" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     import
                   </Text>{' '}
                   {'{ '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     createWeb3Passkey
                   </Text>
                   {' }'}{' '}
-                  <Text as="span" color="#45a2f8">
+                  <Text as="span" color="#ffffff">
                     from
                   </Text>{' '}
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;w3pk&apos;
                   </Text>
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     const
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>{' '}
-                  <Text as="span" color="#45a2f8">
+                  <Text as="span" color="#9ca3af">
                     =
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     createWeb3Passkey
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ({'{'}
                   </Text>
                 </Text>
-                <Text color="#9ca3af" ml={4} mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" ml={4} mb={1}>
+                  <Text as="span" color="#ffffff">
                     apiBaseUrl
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     :{' '}
                   </Text>
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;https://webauthn.w3hc.org&apos;
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ,
                   </Text>
                 </Text>
-                <Text color="#9ca3af" mb={2}>
+                <Text color="#ffffff" mb={2}>
                   {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
                   {'// Register'}
                 </Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     register
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ({'{'}
                   </Text>
                 </Text>
-                <Text color="#9ca3af" ml={4} mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" ml={4} mb={1}>
+                  <Text as="span" color="#ffffff">
                     username
                   </Text>
                   <Text as="span" color="#9ca3af">
                     :{' '}
                   </Text>
-                  <Text as="span" color="#fbbf24">
+                  <Text as="span" color="#8c1c84">
                     &apos;alice&apos;
                   </Text>
                   {/* <Text as="span" color="#9ca3af">
@@ -655,27 +658,27 @@ export default function Home() {
                     ,
                   </Text> */}
                 </Text>
-                <Text color="#9ca3af" mb={2}>
+                <Text color="#ffffff" mb={2}>
                   {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
                   {'// Login'}
                 </Text>
-                <Text color="#9ca3af" mb={1}>
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff" mb={1}>
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     login
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ()
                   </Text>
                 </Text>
@@ -683,20 +686,20 @@ export default function Home() {
                 <Text color="#6b7280" mb={1}>
                   {'// Logout'}
                 </Text>
-                <Text color="#9ca3af">
-                  <Text as="span" color="#45a2f8">
+                <Text color="#ffffff">
+                  <Text as="span" color="#ffffff">
                     await
                   </Text>{' '}
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     w3pk
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     .
                   </Text>
-                  <Text as="span" color="#8c1c84">
+                  <Text as="span" color="#45a2f8">
                     logout
                   </Text>
-                  <Text as="span" color="#9ca3af">
+                  <Text as="span" color="#ffffff">
                     ()
                   </Text>
                 </Text>

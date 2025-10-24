@@ -30,7 +30,6 @@ export default function ZKPage() {
       <VStack spacing={12} align="stretch">
         {/* Header */}
         <Box textAlign="center">
-          <Icon as={FiShield} boxSize={16} color="#8c1c84" mb={4} />
           <Heading as="h1" size="2xl" mb={4}>
             ZK Proofs
           </Heading>
@@ -509,15 +508,18 @@ console.log('Is valid member?', isValid) // true
           </SimpleGrid>
         </Box>
 
-        <Divider />
+        {/* <Divider /> */}
 
         {/* Call to Action */}
         <Box
-          bgGradient="linear(to-br, #8c1c84, #6d1566)"
+          // bgGradient="linear(to-br, #8c1c84, #6d1566)"
+          // bgColor="#45a2f8"
           p={8}
-          borderRadius="xl"
+          borderColor="#45a2f8"
+          border="2px solid"
+          borderRadius="3xl"
           textAlign="center"
-          boxShadow="0 10px 40px rgba(140, 28, 132, 0.3)"
+          boxShadow="0 10px 200px rgba(140, 28, 132, 0.3)"
         >
           <Heading size="lg" mb={4} color="white">
             See Zero-Knowledge Proofs in Action
@@ -529,7 +531,7 @@ console.log('Is valid member?', isValid) // true
             <Button
               size="lg"
               bg="white"
-              color="#8c1c84"
+              color="#45a2f8"
               _hover={{ bg: 'gray.100', transform: 'translateY(-2px)', boxShadow: 'lg' }}
               rightIcon={<FiArrowRight />}
               fontWeight="bold"
