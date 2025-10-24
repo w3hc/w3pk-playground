@@ -463,33 +463,27 @@ export default function SafePage() {
 
           if (update.status === 'verified') {
             toast({
-              title: '✅ Transaction Verified',
+              title: '✅ Sent!',
               description: `Verified in ${update.duration?.toFixed(2)}s`,
               status: 'success',
               duration: 4000,
-              containerStyle: {
-                bg: 'green.500',
-              },
-            })
-          } else if (update.status === 'confirmed') {
-            toast({
-              title: '✅ Transaction Confirmed',
-              description: `Confirmed on-chain in ${update.duration?.toFixed(2)}s`,
-              status: 'success',
-              duration: 5000,
-              containerStyle: {
-                bg: 'green.500',
-              },
+              // containerStyle: {
+              //   bg: 'green.500',
+              // },
             })
 
-            if (update.txHash) {
-              toast({
-                title: 'Transaction Complete!',
-                description: `Tx: ${update.txHash.slice(0, 20)}...`,
-                status: 'success',
-                duration: 10000,
-              })
-            }
+            // Stop the loading state after verification
+            setIsSending(false)
+          } else if (update.status === 'confirmed') {
+            toast({
+              title: '✅ Settled!',
+              description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
+              status: 'info',
+              duration: 5000,
+              // containerStyle: {
+              //   bg: 'green.500',
+              // },
+            })
 
             // Clear form and reload balance
             setRecipient('')
@@ -498,7 +492,6 @@ export default function SafePage() {
 
             // Close WebSocket
             ws.close()
-            setIsSending(false)
           }
         }
 
@@ -523,7 +516,7 @@ export default function SafePage() {
         // Show completion toasts
         if (data.durations?.verified) {
           toast({
-            title: '✅ Transaction Verified',
+            title: '✅ Sent!',
             description: `Verified in ${data.durations.verified.toFixed(2)}s`,
             status: 'success',
             duration: 4000,
@@ -533,31 +526,24 @@ export default function SafePage() {
           })
         }
 
-        if (data.durations?.confirmed) {
+        setIsSending(false)
+
+        if (data.durations?.confirmed && data.txHash) {
           toast({
-            title: '✅ Transaction Confirmed',
-            description: `Confirmed on-chain in ${data.durations.confirmed.toFixed(2)}s`,
-            status: 'success',
+            title: '✅ Settled!',
+            description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
+            status: 'info',
             duration: 5000,
-            containerStyle: {
-              bg: 'green.500',
-            },
+            // containerStyle: {
+            //   bg: 'green.500',
+            // },
           })
         }
-
-        toast({
-          title: 'Transaction Complete!',
-          description: `Tx: ${data.txHash.slice(0, 20)}...`,
-          status: 'success',
-          duration: 10000,
-        })
 
         // Clear form and reload balance
         setRecipient('')
         setAmount('')
         setTimeout(() => loadBalance(), 3000)
-
-        setIsSending(false)
       } else {
         throw new Error(data.error || 'Transaction failed')
       }
@@ -638,12 +624,12 @@ export default function SafePage() {
                   <Text fontWeight="bold" mb={2}>
                     Safe Address:
                   </Text>
-                  <HStack>
-                    <Text fontFamily="mono" fontSize="sm">
+                  <VStack align="stretch" spacing={2}>
+                    <Text fontFamily="mono" fontSize="sm" wordBreak="break-all">
                       {safeAddress}
                     </Text>
-                    <Badge colorScheme="green">Active</Badge>
-                  </HStack>
+                    <Badge colorScheme="green" alignSelf="flex-start">Active</Badge>
+                  </VStack>
                 </Box>
 
                 <HStack justify="space-between">

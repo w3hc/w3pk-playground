@@ -125,23 +125,23 @@ export default function PaymentPage() {
 
         if (update.status === 'verified') {
           toast({
-            title: '💰 Incoming Payment Verified',
-            description: `Receiving ${amountEth} xDAI from ${update.from?.slice(0, 10)}...`,
-            status: 'info',
+            title: '✅ Paid!',
+            description: `You received ${amountEth} xDAI from ${update.from?.slice(0, 10)}...`,
+            status: 'success',
             duration: 5000,
-            containerStyle: {
-              bg: 'blue.500',
-            },
+            // containerStyle: {
+            //   bg: 'blue.500',
+            // },
           })
         } else if (update.status === 'confirmed') {
           toast({
-            title: '✅ Payment Received!',
-            description: `${amountEth} xDAI received in ${update.duration?.toFixed(2)}s`,
-            status: 'success',
+            title: '✅ Settled!',
+            description: `${amountEth} xDAI payment settled onchain in ${update.duration?.toFixed(2)}s`,
+            status: 'info',
             duration: 8000,
-            containerStyle: {
-              bg: 'green.500',
-            },
+            // containerStyle: {
+            //   bg: 'green.500',
+            // },
           })
 
           // Reload balance after receiving payment
@@ -242,19 +242,22 @@ export default function PaymentPage() {
               description: `Verified in ${update.duration?.toFixed(2)}s`,
               status: 'success',
               duration: 4000,
-              containerStyle: {
-                bg: 'green.500',
-              },
+              // containerStyle: {
+              //   bg: 'green.500',
+              // },
             })
+
+            // Stop the loading state after verification
+            setIsSending(false)
           } else if (update.status === 'confirmed') {
             toast({
               title: '✅ Settled!',
               description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
-              status: 'success',
+              status: 'info',
               duration: 5000,
-              containerStyle: {
-                bg: 'green.500',
-              },
+              // containerStyle: {
+              //   bg: 'green.500',
+              // },
             })
 
             // Clear form and reload balance
@@ -264,7 +267,6 @@ export default function PaymentPage() {
 
             // Close WebSocket
             ws.close()
-            setIsSending(false)
           }
         }
 
@@ -305,11 +307,11 @@ export default function PaymentPage() {
           toast({
             title: '✅ Settled!',
             description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
-            status: 'success',
+            status: 'info',
             duration: 5000,
-            containerStyle: {
-              bg: 'green.500',
-            },
+            // containerStyle: {
+            //   bg: 'green.500',
+            // },
           })
         }
 
