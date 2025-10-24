@@ -168,6 +168,21 @@ export default function PaymentPage() {
             // },
           })
 
+          // Create a transaction history item with 'verified' status for the receiver
+          const newIncomingTransaction: Transaction = {
+            txId: `incoming-${Date.now()}`, // Temporary ID until we get the real tx hash
+            txHash: update.txHash || undefined,
+            from: update.from || '',
+            to: safeAddress,
+            amount: update.amount || '0',
+            timestamp: Date.now(),
+            status: 'verified',
+            direction: 'incoming',
+            duration: update.duration,
+          }
+
+          setPendingTransactions(prev => [newIncomingTransaction, ...prev])
+
           // Start showing refetch loader
           setIsRefetchingAfterConfirmation(true)
         } else if (update.status === 'confirmed') {
@@ -181,11 +196,29 @@ export default function PaymentPage() {
           //   // },
           // })
 
+          // Update the pending transaction to 'confirmed' status
+          setPendingTransactions(prev =>
+            prev.map(tx =>
+              tx.direction === 'incoming' && tx.status === 'verified'
+                ? {
+                    ...tx,
+                    status: 'confirmed',
+                    txHash: update.txHash || tx.txHash,
+                    duration: update.duration,
+                  }
+                : tx
+            )
+          )
+
           // Reload transactions after receiving payment (wait for Blockscout indexing)
           setTimeout(() => {
             refetchTransactions().then(() => {
               // Stop showing refetch loader after refetch completes
               setIsRefetchingAfterConfirmation(false)
+              // Remove the pending incoming transaction once it's fetched from blockchain
+              setPendingTransactions(prev =>
+                prev.filter(tx => !(tx.direction === 'incoming' && tx.status === 'confirmed'))
+              )
             })
             loadBalance()
           }, 5000) // Wait 5 seconds for Blockscout to index
