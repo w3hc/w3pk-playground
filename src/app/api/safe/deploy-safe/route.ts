@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     console.log(`Safe deployment status: ${isSafeDeployed ? 'Already deployed' : 'Not deployed'}`)
 
     let txHash: string | undefined
+    let deploymentBlockNumber: number | undefined
 
     if (!isSafeDeployed) {
       // Deploy Safe
@@ -77,7 +78,8 @@ export async function POST(request: NextRequest) {
 
       const receipt = await txResponse.wait()
       txHash = receipt?.hash
-      console.log(`✅ Safe deployed at ${safeAddress}`)
+      deploymentBlockNumber = receipt?.blockNumber
+      console.log(`✅ Safe deployed at ${safeAddress} in block ${deploymentBlockNumber}`)
 
       // Send test tokens (0.1 xDAI) to the Safe
       console.log(`💰 Funding Safe with 0.1 xDAI...`)
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
       success: true,
       safeAddress,
       txHash,
+      deploymentBlockNumber,
       alreadyDeployed: isSafeDeployed,
       moduleAddress: process.env.SESSION_KEYS_MODULE_ADDRESS,
       message: isSafeDeployed

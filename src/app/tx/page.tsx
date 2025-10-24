@@ -28,6 +28,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
+import { TransactionHistory } from '@/components/TransactionHistory'
+import { SafeStorage } from '@/lib/safeStorage'
+import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -51,6 +54,9 @@ export default function PaymentPage() {
   const [sessionKey, setSessionKey] = useState<SessionKey | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [userAddress, setUserAddress] = useState<string | null>(null)
+  const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
+  const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
 
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
@@ -72,8 +78,35 @@ export default function PaymentPage() {
           setSessionKey(data.sessionKey)
         }
       }
+
+      // Get user address and deployment block for transaction history
+      ;(async () => {
+        const wallet0 = await deriveWallet(0)
+        setUserAddress(wallet0.address)
+
+        const safeData = SafeStorage.getSafeData(wallet0.address, 10200)
+        if (safeData?.deploymentBlockNumber) {
+          setDeploymentBlock(safeData.deploymentBlockNumber)
+        }
+      })()
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, deriveWallet])
+
+  // Load transaction history from blockchain
+  const {
+    transactions,
+    isLoading: isLoadingTransactions,
+    isError: isTransactionError,
+    error: transactionError,
+    refetch: refetchTransactions,
+    lastUpdated: transactionsLastUpdated,
+  } = useSafeTransactionHistory({
+    safeAddress,
+    userAddress,
+    chainId: 10200,
+    deploymentBlockNumber: deploymentBlock,
+    enabled: !!safeAddress && !!userAddress,
+  })
 
   // Load Safe balance
   const loadBalance = useCallback(async () => {
@@ -109,14 +142,14 @@ export default function PaymentPage() {
 
   // Listen for incoming transactions to this Safe address
   useEffect(() => {
-    if (!safeAddress) return
+    if (!safeAddress || !user) return
 
     // Connect WebSocket to listen for incoming transactions
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?recipient=${safeAddress}`)
 
-    ws.onmessage = event => {
+    ws.onmessage = async event => {
       const update = JSON.parse(event.data)
       console.log('Incoming transaction update:', update)
 
@@ -133,6 +166,9 @@ export default function PaymentPage() {
             //   bg: 'blue.500',
             // },
           })
+
+          // Start showing refetch loader
+          setIsRefetchingAfterConfirmation(true)
         } else if (update.status === 'confirmed') {
           toast({
             title: '✅ Settled!',
@@ -144,8 +180,14 @@ export default function PaymentPage() {
             // },
           })
 
-          // Reload balance after receiving payment
-          setTimeout(() => loadBalance(), 2000)
+          // Reload transactions after receiving payment (wait for Blockscout indexing)
+          setTimeout(() => {
+            refetchTransactions().then(() => {
+              // Stop showing refetch loader after refetch completes
+              setIsRefetchingAfterConfirmation(false)
+            })
+            loadBalance()
+          }, 5000) // Wait 5 seconds for Blockscout to index
         }
       }
     }
@@ -162,7 +204,7 @@ export default function PaymentPage() {
     return () => {
       ws.close()
     }
-  }, [safeAddress, toast, loadBalance])
+  }, [safeAddress, user, toast, loadBalance, refetchTransactions])
 
   const sendTransaction = async () => {
     if (!safeAddress || !sessionKey || !recipient || !amount) {
@@ -232,7 +274,7 @@ export default function PaymentPage() {
         const host = window.location.host
         const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?txId=${data.txId}`)
 
-        ws.onmessage = event => {
+        ws.onmessage = async event => {
           const update = JSON.parse(event.data)
           console.log('WebSocket update:', update)
 
@@ -249,6 +291,9 @@ export default function PaymentPage() {
 
             // Stop the loading state after verification
             setIsSending(false)
+
+            // Start showing refetch loader
+            setIsRefetchingAfterConfirmation(true)
           } else if (update.status === 'confirmed') {
             toast({
               title: '✅ Settled!',
@@ -260,10 +305,16 @@ export default function PaymentPage() {
               // },
             })
 
-            // Clear form and reload balance
+            // Clear form and reload balance and transactions (wait for Blockscout indexing)
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
             setAmount('0.001')
-            setTimeout(() => loadBalance(), 3000)
+            setTimeout(() => {
+              loadBalance()
+              refetchTransactions().then(() => {
+                // Stop showing refetch loader after refetch completes
+                setIsRefetchingAfterConfirmation(false)
+              })
+            }, 5000) // Wait 5 seconds for Blockscout to index
 
             // Close WebSocket
             ws.close()
@@ -315,10 +366,13 @@ export default function PaymentPage() {
           })
         }
 
-        // Clear form and reload balance
+        // Clear form and reload balance and transactions
         setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
         setAmount('0.001')
-        setTimeout(() => loadBalance(), 3000)
+        setTimeout(() => {
+          loadBalance()
+          refetchTransactions()
+        }, 5000) // Wait 5 seconds for Blockscout to index
       } else {
         throw new Error(data.error || 'Transaction failed')
       }
@@ -537,6 +591,18 @@ export default function PaymentPage() {
             </VStack>
           </CardBody>
         </Card>
+
+        {/* Transaction History */}
+        <TransactionHistory
+          transactions={transactions}
+          isLoading={isLoadingTransactions}
+          isError={isTransactionError}
+          error={transactionError}
+          onRefresh={refetchTransactions}
+          safeAddress={safeAddress}
+          lastUpdated={transactionsLastUpdated}
+          isRefetchingAfterConfirmation={isRefetchingAfterConfirmation}
+        />
 
         {/* Quick Link */}
         <Box textAlign="center">

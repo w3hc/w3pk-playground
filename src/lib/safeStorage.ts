@@ -1,6 +1,7 @@
 /**
  * Safe Storage - Hybrid approach using localStorage + API backup
- * Stores Safe deployment data, session keys, and transaction history
+ * Stores Safe deployment data and session keys
+ * Transaction history is now queried from the blockchain
  */
 
 export interface SessionKey {
@@ -16,13 +17,29 @@ export interface SessionKey {
   isActive: boolean
 }
 
+export interface Transaction {
+  txId: string
+  txHash?: string
+  from: string
+  to: string
+  amount: string // in wei
+  timestamp: number
+  status: 'pending' | 'verified' | 'confirmed'
+  direction: 'incoming' | 'outgoing'
+  duration?: number // time to confirm in seconds
+  sessionKeyAddress?: string // if sent via session key
+  isSelfTransfer?: boolean // true if Safe sent to itself
+}
+
 export interface SafeData {
   safeAddress: string
   deployedAt: string
   deploymentTxHash: string
+  deploymentBlockNumber?: number // block number when Safe was deployed
   sessionKeys: SessionKey[]
   lastBalance: string // cached for display
   lastChecked: string
+  // transactions removed - now queried from blockchain via /api/safe/transaction-history
 }
 
 export interface UserSafeData {
@@ -247,6 +264,12 @@ class SafeStorageClass {
       return null
     }
   }
+
+  /**
+   * Transaction history methods removed
+   * Use /api/safe/transaction-history endpoint and useSafeTransactionHistory hook instead
+   * Transactions are now queried directly from the blockchain via ExecutionSuccess events
+   */
 
   /**
    * Clear all Safe data for user
