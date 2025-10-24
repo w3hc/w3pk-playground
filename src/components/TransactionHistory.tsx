@@ -17,6 +17,7 @@ import {
 import { FiArrowUpRight, FiArrowDownLeft, FiRefreshCw, FiExternalLink } from 'react-icons/fi'
 import { ethers } from 'ethers'
 import { Transaction } from '@/lib/safeStorage'
+import CustomSpinner from './Spinner'
 
 interface TransactionHistoryProps {
   transactions: Transaction[]
@@ -26,7 +27,7 @@ interface TransactionHistoryProps {
   isError?: boolean
   error?: Error | null
   lastUpdated?: Date | null
-  dataSource?: 'localStorage' | 'blockchain' // Where the data is coming from
+  isRefetchingAfterConfirmation?: boolean // True when refetching blockchain data after tx confirmation
 }
 
 export function TransactionHistory({
@@ -37,7 +38,7 @@ export function TransactionHistory({
   isError = false,
   error = null,
   lastUpdated = null,
-  dataSource = 'localStorage',
+  isRefetchingAfterConfirmation = false,
 }: TransactionHistoryProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,7 +84,7 @@ export function TransactionHistory({
         <CardBody>
           <VStack spacing={4} py={8}>
             <Spinner size="lg" color="purple.500" />
-            <Text color="gray.400">Loading transactions from {dataSource}...</Text>
+            <Text color="gray.400">Loading transactions from blockchain...</Text>
           </VStack>
         </CardBody>
       </Card>
@@ -136,23 +137,24 @@ export function TransactionHistory({
               </Text>
             )}
           </VStack>
-          <HStack spacing={2}>
-            {dataSource === 'blockchain' && (
+          {isRefetchingAfterConfirmation ? (
+            <CustomSpinner size="100px" />
+          ) : (
+            <HStack spacing={2}>
               <Badge colorScheme="purple" fontSize="xs">
-                On-chain
+                Onchain
               </Badge>
-            )}
-            <Tooltip label="Refresh transactions">
-              <IconButton
-                aria-label="Refresh transactions"
-                icon={<FiRefreshCw />}
-                size="sm"
-                variant="ghost"
-                onClick={onRefresh}
-                isLoading={isLoading}
-              />
-            </Tooltip>
-          </HStack>
+              <Tooltip label="Refresh transactions">
+                <IconButton
+                  aria-label="Refresh transactions"
+                  icon={<FiRefreshCw />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={onRefresh}
+                />
+              </Tooltip>
+            </HStack>
+          )}
         </HStack>
       </CardHeader>
       <CardBody>

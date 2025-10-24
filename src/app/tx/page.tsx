@@ -56,6 +56,7 @@ export default function PaymentPage() {
   const [isSending, setIsSending] = useState(false)
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
+  const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
 
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
@@ -165,6 +166,9 @@ export default function PaymentPage() {
             //   bg: 'blue.500',
             // },
           })
+
+          // Start showing refetch loader
+          setIsRefetchingAfterConfirmation(true)
         } else if (update.status === 'confirmed') {
           toast({
             title: '✅ Settled!',
@@ -178,7 +182,10 @@ export default function PaymentPage() {
 
           // Reload transactions after receiving payment (wait for Blockscout indexing)
           setTimeout(() => {
-            refetchTransactions()
+            refetchTransactions().then(() => {
+              // Stop showing refetch loader after refetch completes
+              setIsRefetchingAfterConfirmation(false)
+            })
             loadBalance()
           }, 5000) // Wait 5 seconds for Blockscout to index
         }
@@ -284,6 +291,9 @@ export default function PaymentPage() {
 
             // Stop the loading state after verification
             setIsSending(false)
+
+            // Start showing refetch loader
+            setIsRefetchingAfterConfirmation(true)
           } else if (update.status === 'confirmed') {
             toast({
               title: '✅ Settled!',
@@ -300,7 +310,10 @@ export default function PaymentPage() {
             setAmount('0.001')
             setTimeout(() => {
               loadBalance()
-              refetchTransactions()
+              refetchTransactions().then(() => {
+                // Stop showing refetch loader after refetch completes
+                setIsRefetchingAfterConfirmation(false)
+              })
             }, 5000) // Wait 5 seconds for Blockscout to index
 
             // Close WebSocket
@@ -588,7 +601,7 @@ export default function PaymentPage() {
           onRefresh={refetchTransactions}
           safeAddress={safeAddress}
           lastUpdated={transactionsLastUpdated}
-          dataSource="blockchain"
+          isRefetchingAfterConfirmation={isRefetchingAfterConfirmation}
         />
 
         {/* Quick Link */}

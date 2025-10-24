@@ -12,7 +12,7 @@ export default function Spinner({ size = '20px' }: SpinnerProps) {
       alt="Loading..."
       width={size}
       height={size}
-      display="inline-block"
+      // display="inline-block"
     />
   )
 }
