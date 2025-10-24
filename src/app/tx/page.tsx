@@ -28,6 +28,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
+import { TransactionHistory } from '@/components/TransactionHistory'
+import { Transaction, SafeStorage } from '@/lib/safeStorage'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -52,6 +54,10 @@ export default function PaymentPage() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [isSending, setIsSending] = useState(false)
 
+  // Transaction history state
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
+
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('0.001')
@@ -74,6 +80,37 @@ export default function PaymentPage() {
       }
     }
   }, [isAuthenticated, user])
+
+  // Load transaction history from client-side localStorage
+  const loadTransactions = useCallback(async () => {
+    console.log('🔍 [loadTransactions] Starting (client-side)...')
+    console.log('  user:', user?.id)
+    console.log('  safeAddress:', safeAddress)
+
+    if (!user || !safeAddress) {
+      console.log('❌ [loadTransactions] Missing user or safeAddress, skipping')
+      return
+    }
+
+    setIsLoadingTransactions(true)
+
+    try {
+      const wallet0 = await deriveWallet(0)
+      console.log('  wallet0.address:', wallet0.address)
+      console.log('  Reading from localStorage...')
+
+      // Read directly from SafeStorage (client-side localStorage)
+      const txs = SafeStorage.getTransactionsBySafe(wallet0.address, safeAddress, 10200, 50)
+
+      console.log('  Transactions found:', txs.length)
+      setTransactions(txs)
+      console.log('✅ [loadTransactions] Set transactions:', txs.length)
+    } catch (error) {
+      console.error('❌ [loadTransactions] Error:', error)
+    } finally {
+      setIsLoadingTransactions(false)
+    }
+  }, [user, safeAddress, deriveWallet])
 
   // Load Safe balance
   const loadBalance = useCallback(async () => {
@@ -104,19 +141,20 @@ export default function PaymentPage() {
   useEffect(() => {
     if (safeAddress) {
       loadBalance()
+      loadTransactions()
     }
-  }, [safeAddress, loadBalance])
+  }, [safeAddress, loadBalance, loadTransactions])
 
   // Listen for incoming transactions to this Safe address
   useEffect(() => {
-    if (!safeAddress) return
+    if (!safeAddress || !user) return
 
     // Connect WebSocket to listen for incoming transactions
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?recipient=${safeAddress}`)
 
-    ws.onmessage = event => {
+    ws.onmessage = async event => {
       const update = JSON.parse(event.data)
       console.log('Incoming transaction update:', update)
 
@@ -144,8 +182,41 @@ export default function PaymentPage() {
             // },
           })
 
-          // Reload balance after receiving payment
-          setTimeout(() => loadBalance(), 2000)
+          // Store incoming transaction (client-side)
+          if (update.from && update.amount && update.recipientAddress) {
+            try {
+              console.log('💾 Storing incoming transaction (client-side)')
+              const wallet0 = await deriveWallet(0)
+              const incomingTx: Transaction = {
+                txId: update.txHash || `incoming-${Date.now()}`,
+                txHash: update.txHash,
+                from: update.from,
+                to: update.recipientAddress,
+                amount: update.amount,
+                timestamp: update.timestamp || Date.now(),
+                status: 'confirmed',
+                direction: 'incoming',
+                duration: update.duration,
+              }
+
+              console.log('  Transaction:', incomingTx)
+              console.log('  wallet0.address:', wallet0.address)
+
+              // Store directly in localStorage via SafeStorage
+              SafeStorage.addTransaction(wallet0.address, 10200, incomingTx)
+              console.log('✅ Incoming transaction stored')
+            } catch (error) {
+              console.error('❌ Error storing incoming transaction:', error)
+            }
+          }
+
+          // Reload transactions after receiving payment
+          loadTransactions()
+
+          // Reload balance (set depending on the RPC node indexation speed)
+          setTimeout(() => {
+            loadBalance()
+          }, 1000)
         }
       }
     }
@@ -162,7 +233,7 @@ export default function PaymentPage() {
     return () => {
       ws.close()
     }
-  }, [safeAddress, toast, loadBalance])
+  }, [safeAddress, user, toast, loadBalance, loadTransactions, deriveWallet])
 
   const sendTransaction = async () => {
     if (!safeAddress || !sessionKey || !recipient || !amount) {
@@ -232,7 +303,7 @@ export default function PaymentPage() {
         const host = window.location.host
         const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?txId=${data.txId}`)
 
-        ws.onmessage = event => {
+        ws.onmessage = async event => {
           const update = JSON.parse(event.data)
           console.log('WebSocket update:', update)
 
@@ -247,6 +318,27 @@ export default function PaymentPage() {
               // },
             })
 
+            // Store outgoing transaction (verified status) client-side
+            try {
+              console.log('💾 Storing outgoing transaction (verified)')
+              const wallet0 = await deriveWallet(0)
+              const tx: Transaction = {
+                txId: data.txId,
+                from: safeAddress,
+                to: recipient,
+                amount: ethers.parseEther(amount).toString(),
+                timestamp: update.timestamp || Date.now(),
+                status: 'verified',
+                direction: 'outgoing',
+                duration: update.duration,
+                sessionKeyAddress: sessionKey?.sessionKeyAddress,
+              }
+              SafeStorage.addTransaction(wallet0.address, 10200, tx)
+              console.log('✅ Outgoing transaction stored (verified)')
+            } catch (error) {
+              console.error('❌ Error storing outgoing transaction:', error)
+            }
+
             // Stop the loading state after verification
             setIsSending(false)
           } else if (update.status === 'confirmed') {
@@ -260,10 +352,28 @@ export default function PaymentPage() {
               // },
             })
 
-            // Clear form and reload balance
+            // Update transaction with confirmed status and txHash
+            try {
+              console.log('💾 Updating outgoing transaction (confirmed)')
+              const wallet0 = await deriveWallet(0)
+              SafeStorage.updateTransaction(wallet0.address, 10200, data.txId, {
+                status: 'confirmed',
+                txHash: update.txHash,
+                duration: update.duration,
+                timestamp: update.timestamp || Date.now(),
+              })
+              console.log('✅ Outgoing transaction updated (confirmed)')
+            } catch (error) {
+              console.error('❌ Error updating outgoing transaction:', error)
+            }
+
+            // Clear form and reload balance and transactions
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
             setAmount('0.001')
-            setTimeout(() => loadBalance(), 3000)
+            setTimeout(() => {
+              loadBalance()
+              loadTransactions()
+            }, 3000)
 
             // Close WebSocket
             ws.close()
@@ -315,10 +425,13 @@ export default function PaymentPage() {
           })
         }
 
-        // Clear form and reload balance
+        // Clear form and reload balance and transactions
         setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
         setAmount('0.001')
-        setTimeout(() => loadBalance(), 3000)
+        setTimeout(() => {
+          loadBalance()
+          loadTransactions()
+        }, 3000)
       } else {
         throw new Error(data.error || 'Transaction failed')
       }
@@ -537,6 +650,14 @@ export default function PaymentPage() {
             </VStack>
           </CardBody>
         </Card>
+
+        {/* Transaction History */}
+        <TransactionHistory
+          transactions={transactions}
+          isLoading={isLoadingTransactions}
+          onRefresh={loadTransactions}
+          safeAddress={safeAddress}
+        />
 
         {/* Quick Link */}
         <Box textAlign="center">
