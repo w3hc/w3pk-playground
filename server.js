@@ -3,9 +3,10 @@ const { parse } = require('url')
 const next = require('next')
 const { WebSocketServer } = require('ws')
 
-const dev = process.env.NODE_ENV !== 'production'
-const hostname = 'localhost'
 const port = parseInt(process.env.PORT || '3000', 10)
+// Auto-detect environment: port 3000 = development, any other port = production
+const dev = port === 3000
+const hostname = 'localhost'
 
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
