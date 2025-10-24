@@ -168,7 +168,7 @@ export default function Header() {
               <MenuList minWidth="auto">
                 <Link href="/addr" color="white">
                   <MenuItem fontSize="md" px={4} py={3}>
-                    My addresses
+                    View addresses
                   </MenuItem>
                 </Link>
                 <Link href="/sig" color="white">
@@ -194,6 +194,11 @@ export default function Header() {
                 <Link href="/safe" color="white">
                   <MenuItem fontSize="md" px={4} py={3}>
                     Safe dashboard
+                  </MenuItem>
+                </Link>
+                <Link href="/zk" color="white">
+                  <MenuItem fontSize="md" px={4} py={3}>
+                    ZK proofs
                   </MenuItem>
                 </Link>
               </MenuList>
