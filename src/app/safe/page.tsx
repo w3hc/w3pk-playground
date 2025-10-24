@@ -475,15 +475,15 @@ export default function SafePage() {
             // Stop the loading state after verification
             setIsSending(false)
           } else if (update.status === 'confirmed') {
-            toast({
-              title: '✅ Settled!',
-              description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
-              status: 'info',
-              duration: 5000,
-              // containerStyle: {
-              //   bg: 'green.500',
-              // },
-            })
+            // toast({
+            //   title: '✅ Settled!',
+            //   description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
+            //   status: 'info',
+            //   duration: 5000,
+            //   // containerStyle: {
+            //   //   bg: 'green.500',
+            //   // },
+            // })
 
             // Clear form and reload balance
             setRecipient('')
@@ -529,15 +529,15 @@ export default function SafePage() {
         setIsSending(false)
 
         if (data.durations?.confirmed && data.txHash) {
-          toast({
-            title: '✅ Settled!',
-            description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
-            status: 'info',
-            duration: 5000,
-            // containerStyle: {
-            //   bg: 'green.500',
-            // },
-          })
+          // toast({
+          //   title: '✅ Settled!',
+          //   description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
+          //   status: 'info',
+          //   duration: 5000,
+          //   // containerStyle: {
+          //   //   bg: 'green.500',
+          //   // },
+          // })
         }
 
         // Clear form and reload balance

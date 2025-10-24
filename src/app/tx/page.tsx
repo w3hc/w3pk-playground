@@ -29,7 +29,7 @@ import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
 import { TransactionHistory } from '@/components/TransactionHistory'
-import { SafeStorage } from '@/lib/safeStorage'
+import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 
 interface SessionKey {
@@ -57,6 +57,7 @@ export default function PaymentPage() {
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
+  const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([])
 
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
@@ -170,15 +171,15 @@ export default function PaymentPage() {
           // Start showing refetch loader
           setIsRefetchingAfterConfirmation(true)
         } else if (update.status === 'confirmed') {
-          toast({
-            title: '✅ Settled!',
-            description: `${amountEth} xDAI payment settled onchain in ${update.duration?.toFixed(2)}s`,
-            status: 'info',
-            duration: 8000,
-            // containerStyle: {
-            //   bg: 'green.500',
-            // },
-          })
+          // toast({
+          //   title: '✅ Settled!',
+          //   description: `${amountEth} xDAI payment settled onchain in ${update.duration?.toFixed(2)}s`,
+          //   status: 'info',
+          //   duration: 8000,
+          //   // containerStyle: {
+          //   //   bg: 'green.500',
+          //   // },
+          // })
 
           // Reload transactions after receiving payment (wait for Blockscout indexing)
           setTimeout(() => {
@@ -289,21 +290,51 @@ export default function PaymentPage() {
               // },
             })
 
+            // Create a transaction history item with 'verified' status
+            const newTransaction: Transaction = {
+              txId: data.txId,
+              txHash: update.txHash || undefined,
+              from: safeAddress,
+              to: recipient,
+              amount: txData.value,
+              timestamp: Date.now(),
+              status: 'verified',
+              direction: 'outgoing',
+              duration: update.duration,
+              sessionKeyAddress: sessionKey.sessionKeyAddress,
+            }
+
+            setPendingTransactions(prev => [newTransaction, ...prev])
+
             // Stop the loading state after verification
             setIsSending(false)
 
             // Start showing refetch loader
             setIsRefetchingAfterConfirmation(true)
           } else if (update.status === 'confirmed') {
-            toast({
-              title: '✅ Settled!',
-              description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
-              status: 'info',
-              duration: 5000,
-              // containerStyle: {
-              //   bg: 'green.500',
-              // },
-            })
+            // toast({
+            //   title: '✅ Settled!',
+            //   description: `Settled onchain in ${update.duration?.toFixed(2)}s.\nTx hash: ${update.txHash?.slice(0, 10) || 'N/A'}...`,
+            //   status: 'info',
+            //   duration: 5000,
+            //   // containerStyle: {
+            //   //   bg: 'green.500',
+            //   // },
+            // })
+
+            // Update the pending transaction to 'confirmed' status
+            setPendingTransactions(prev =>
+              prev.map(tx =>
+                tx.txId === data.txId
+                  ? {
+                      ...tx,
+                      status: 'confirmed',
+                      txHash: update.txHash || tx.txHash,
+                      duration: update.duration,
+                    }
+                  : tx
+              )
+            )
 
             // Clear form and reload balance and transactions (wait for Blockscout indexing)
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
@@ -313,6 +344,8 @@ export default function PaymentPage() {
               refetchTransactions().then(() => {
                 // Stop showing refetch loader after refetch completes
                 setIsRefetchingAfterConfirmation(false)
+                // Remove the transaction from pending once it's on blockchain
+                setPendingTransactions(prev => prev.filter(tx => tx.txId !== data.txId))
               })
             }, 5000) // Wait 5 seconds for Blockscout to index
 
@@ -355,15 +388,15 @@ export default function PaymentPage() {
         setIsSending(false)
 
         if (data.durations?.confirmed && data.txHash) {
-          toast({
-            title: '✅ Settled!',
-            description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
-            status: 'info',
-            duration: 5000,
-            // containerStyle: {
-            //   bg: 'green.500',
-            // },
-          })
+          // toast({
+          //   title: '✅ Settled!',
+          //   description: `Settled onchain in ${data.durations.confirmed.toFixed(2)}s. \nTx hash: ${data.txHash?.slice(0, 10) || 'N/A'}...`,
+          //   status: 'info',
+          //   duration: 5000,
+          //   // containerStyle: {
+          //   //   bg: 'green.500',
+          //   // },
+          // })
         }
 
         // Clear form and reload balance and transactions
@@ -536,7 +569,7 @@ export default function PaymentPage() {
                 leftIcon={<FiSend />}
                 isDisabled={!recipient || !amount || !sessionKey || isSessionKeyExpired}
               >
-                Send Transaction (Gasless)
+                Send
               </Button>
 
               <Text fontSize="sm" color="gray.500" textAlign="center">
@@ -594,7 +627,7 @@ export default function PaymentPage() {
 
         {/* Transaction History */}
         <TransactionHistory
-          transactions={transactions}
+          transactions={[...pendingTransactions, ...transactions]}
           isLoading={isLoadingTransactions}
           isError={isTransactionError}
           error={transactionError}

@@ -13,6 +13,7 @@ import {
   Spinner,
   IconButton,
   Tooltip,
+  useToast,
 } from '@chakra-ui/react'
 import { FiArrowUpRight, FiArrowDownLeft, FiRefreshCw, FiExternalLink } from 'react-icons/fi'
 import { ethers } from 'ethers'
@@ -40,6 +41,19 @@ export function TransactionHistory({
   lastUpdated = null,
   isRefetchingAfterConfirmation = false,
 }: TransactionHistoryProps) {
+  const toast = useToast()
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: `${label} copied!`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      })
+    })
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -137,8 +151,23 @@ export function TransactionHistory({
               </Text>
             )}
           </VStack>
-          {isRefetchingAfterConfirmation ? (
-            <CustomSpinner size="100px" />
+          <HStack spacing={2}>
+            <Badge colorScheme="purple" fontSize="xs">
+              Onchain
+            </Badge>
+            <Tooltip label="Refresh transactions">
+              <IconButton
+                aria-label="Refresh transactions"
+                icon={<FiRefreshCw />}
+                size="sm"
+                variant="ghost"
+                onClick={onRefresh}
+              />
+            </Tooltip>
+          </HStack>
+          {/* {isRefetchingAfterConfirmation ? (
+            // <CustomSpinner size="100px" />
+            ' '
           ) : (
             <HStack spacing={2}>
               <Badge colorScheme="purple" fontSize="xs">
@@ -154,7 +183,7 @@ export function TransactionHistory({
                 />
               </Tooltip>
             </HStack>
-          )}
+          )} */}
         </HStack>
       </CardHeader>
       <CardBody>
@@ -203,7 +232,7 @@ export function TransactionHistory({
                     </VStack>
                   </HStack>
                   <Badge colorScheme={getStatusColor(tx.status)} fontSize="xs">
-                    {tx.status}
+                    {tx.status === 'verified' ? 'PAID' : tx.status}
                   </Badge>
                 </HStack>
 
@@ -215,14 +244,31 @@ export function TransactionHistory({
                     </Text>
                   </HStack>
 
-                  <HStack justify="space-between">
-                    <Text color="gray.400">{tx.direction === 'outgoing' ? 'To:' : 'From:'}</Text>
-                    <Text fontFamily="mono" fontSize="xs">
-                      {formatAddress(tx.direction === 'outgoing' ? tx.to : tx.from)}
+                  <HStack justify="space-between" align="start">
+                    <Text color="gray.400" flexShrink={0}>
+                      {tx.direction === 'outgoing' ? 'To:' : 'From:'}
+                    </Text>
+                    <Text
+                      fontFamily="mono"
+                      fontSize="xs"
+                      cursor="pointer"
+                      onClick={() =>
+                        copyToClipboard(
+                          tx.direction === 'outgoing' ? tx.to : tx.from,
+                          'Address'
+                        )
+                      }
+                      _hover={{ color: 'purple.400' }}
+                      transition="color 0.2s"
+                      wordBreak="break-all"
+                      textAlign="right"
+                      maxW="70%"
+                    >
+                      {tx.direction === 'outgoing' ? tx.to : tx.from}
                     </Text>
                   </HStack>
 
-                  {tx.sessionKeyAddress && tx.direction === 'outgoing' && (
+                  {/* {tx.sessionKeyAddress && tx.direction === 'outgoing' && (
                     <HStack justify="space-between">
                       <Text color="gray.400" fontSize="xs">
                         Session Key:
@@ -231,9 +277,9 @@ export function TransactionHistory({
                         {formatAddress(tx.sessionKeyAddress)}
                       </Text>
                     </HStack>
-                  )}
+                  )} */}
 
-                  {tx.duration && (
+                  {/* {tx.duration && (
                     <HStack justify="space-between">
                       <Text color="gray.400" fontSize="xs">
                         Duration:
@@ -242,13 +288,13 @@ export function TransactionHistory({
                         {tx.duration.toFixed(2)}s
                       </Text>
                     </HStack>
-                  )}
+                  )} */}
 
-                  {tx.txHash && (
-                    <HStack justify="space-between">
-                      <Text color="gray.400" fontSize="xs">
-                        Tx Hash:
-                      </Text>
+                  <HStack justify="space-between">
+                    <Text color="gray.400" fontSize="xs">
+                      Tx Hash:
+                    </Text>
+                    {tx.txHash ? (
                       <HStack spacing={1}>
                         <Text fontFamily="mono" fontSize="xs" color="blue.400">
                           {formatAddress(tx.txHash)}
@@ -265,8 +311,22 @@ export function TransactionHistory({
                           color="blue.400"
                         />
                       </HStack>
-                    </HStack>
-                  )}
+                    ) : (
+                      <Text
+                        fontSize="xs"
+                        color="blue.400"
+                        sx={{
+                          '@keyframes blink': {
+                            '0%, 100%': { opacity: 1 },
+                            '50%': { opacity: 0.3 },
+                          },
+                          animation: 'blink 1.5s ease-in-out infinite',
+                        }}
+                      >
+                        Settling this one...
+                      </Text>
+                    )}
+                  </HStack>
                 </VStack>
               </Box>
             ))}
