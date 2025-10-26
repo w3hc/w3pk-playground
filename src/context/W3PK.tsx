@@ -186,11 +186,10 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       setIsLoading(true)
       console.log('=== Starting Registration with w3pk ===')
 
-      const { mnemonic } = await w3pk.register({
+      await w3pk.register({
         username,
       })
       console.log('Registration successful')
-      console.log('⚠️ SAVE THIS RECOVERY PHRASE:', mnemonic)
 
       toast({
         title: 'Registration Successful! 🎉',
