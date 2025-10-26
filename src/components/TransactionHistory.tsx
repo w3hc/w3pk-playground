@@ -240,7 +240,7 @@ export function TransactionHistory({
                   <HStack justify="space-between">
                     <Text color="gray.400">Amount:</Text>
                     <Text fontWeight="bold" fontFamily="mono">
-                      {parseFloat(ethers.formatEther(tx.amount)).toFixed(6)} xDAI
+                      {parseFloat(ethers.formatEther(tx.amount)).toFixed(2)} EUR
                     </Text>
                   </HStack>
 

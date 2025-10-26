@@ -31,6 +31,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { TransactionHistory } from '@/components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
+import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -264,11 +265,16 @@ export default function PaymentPage() {
     setIsSending(true)
 
     try {
-      // Prepare transaction data
+      // Encode ERC-20 transfer function call
+      const erc20Interface = new ethers.Interface(ERC20_ABI)
+      const transferAmount = ethers.parseEther(amount).toString()
+      const transferData = erc20Interface.encodeFunctionData('transfer', [recipient, transferAmount])
+
+      // Prepare transaction data (must match backend format for signature verification)
       const txData = {
-        to: recipient,
-        value: ethers.parseEther(amount).toString(),
-        data: '0x',
+        to: EURO_TOKEN_ADDRESS, // Transaction goes to token contract
+        value: '0', // No native currency transfer
+        data: transferData, // ERC-20 transfer call
       }
 
       // Derive the session key wallet to sign the transaction
@@ -299,7 +305,7 @@ export default function PaymentPage() {
           safeAddress,
           chainId: 10200,
           to: recipient,
-          amount: txData.value,
+          amount: transferAmount, // Send the EUR token amount
           sessionKeyAddress: sessionKey.sessionKeyAddress,
           sessionKeyValidUntil: sessionKey.permissions.validUntil,
           userPrivateKey: wallet0.privateKey,
@@ -337,7 +343,7 @@ export default function PaymentPage() {
               txHash: update.txHash || undefined,
               from: safeAddress,
               to: recipient,
-              amount: txData.value,
+              amount: transferAmount,
               timestamp: Date.now(),
               status: 'verified',
               direction: 'outgoing',

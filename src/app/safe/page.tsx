@@ -58,6 +58,7 @@ export default function SafePage() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [isEnablingModule, setIsEnablingModule] = useState(false)
   const [moduleEnableTxData, setModuleEnableTxData] = useState<any>(null)
+  const [isMintingEUR, setIsMintingEUR] = useState(false)
 
   // Send transaction form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
@@ -178,6 +179,47 @@ export default function SafePage() {
       loadBalance()
     }
   }, [safeAddress, loadBalance])
+
+  const mintEUR = async () => {
+    if (!safeAddress) return
+    setIsMintingEUR(true)
+
+    try {
+      const response = await fetch('/api/safe/faucet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          safeAddress,
+          chainId: 10200, // Gnosis Chiado
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Success!',
+          description: `You received 10,000 EUR! Merry Christmas, my friend!`,
+          status: 'success',
+          duration: 5000,
+        })
+        // Refresh balance after minting
+        await loadBalance()
+      } else {
+        throw new Error(data.error || 'Failed to mint EUR')
+      }
+    } catch (error: any) {
+      console.error('Error minting EUR:', error)
+      toast({
+        title: 'Minting Failed',
+        description: error.message || 'Failed to mint EUR tokens',
+        status: 'error',
+        duration: 5000,
+      })
+    } finally {
+      setIsMintingEUR(false)
+    }
+  }
 
   const deploySafe = async () => {
     setIsDeploying(true)
@@ -655,7 +697,7 @@ export default function SafePage() {
                     ) : (
                       <>
                         <Text fontFamily="mono">
-                          {parseFloat(ethers.formatEther(safeBalance)).toFixed(6)} xDAI
+                          {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)} EUR
                         </Text>
                         <Button size="xs" onClick={loadBalance} variant="ghost">
                           Refresh
@@ -766,7 +808,10 @@ export default function SafePage() {
                         </Text>
                       </HStack>
                       <Text fontSize="lg" fontFamily="mono">
-                        {ethers.formatEther(sessionKey.permissions.spendingLimit)} xDAI
+                        {parseFloat(
+                          ethers.formatEther(sessionKey.permissions.spendingLimit)
+                        ).toFixed(2)}{' '}
+                        EUR
                       </Text>
                     </Box>
 
@@ -872,7 +917,7 @@ export default function SafePage() {
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel>Amount (xDAI)</FormLabel>
+                  <FormLabel>Amount (EUR)</FormLabel>
                   <Input
                     type="number"
                     step="0.001"
@@ -928,6 +973,21 @@ export default function SafePage() {
             <Text>• Session keys have spending limits and expiry times</Text>
           </VStack>
         </Box>
+
+        {/* Faucet Button */}
+        {safeAddress && (
+          <Box textAlign="center" pt={4}>
+            <Button
+              size="sm"
+              colorScheme="red"
+              onClick={mintEUR}
+              isLoading={isMintingEUR}
+              loadingText="Minting..."
+            >
+              Get 10,000 EUR
+            </Button>
+          </Box>
+        )}
       </VStack>
     </Container>
   )

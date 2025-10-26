@@ -5,6 +5,7 @@ import { getAccount, OWNABLE_VALIDATOR_ADDRESS } from '@rhinestone/module-sdk'
 import { sendTransactionStatus } from '@/lib/websocket'
 import { randomBytes } from 'crypto'
 import { createWeb3Passkey } from 'w3pk'
+import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
 
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
 
@@ -88,20 +89,27 @@ async function processTransactionSync(params: TransactionParams) {
 
     const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
-    const balance = await provider.getBalance(safeAddress)
+
+    // Check EUR token balance instead of native balance
+    const euroContract = new ethers.Contract(EURO_TOKEN_ADDRESS, ERC20_ABI, provider)
+    const balance = await euroContract.balanceOf(safeAddress)
 
     if (balance < amountBigInt) {
       return {
         success: false,
-        error: 'Insufficient balance',
-        details: `Safe balance: ${balance.toString()} wei, required: ${amount} wei`,
+        error: 'Insufficient EUR balance',
+        details: `Safe EUR balance: ${balance.toString()} wei, required: ${amount} wei`,
       }
     }
 
+    // Encode ERC-20 transfer function call
+    const erc20Interface = new ethers.Interface(ERC20_ABI)
+    const transferData = erc20Interface.encodeFunctionData('transfer', [to, amount])
+
     const txData = {
-      to,
-      value: amount,
-      data: '0x',
+      to: EURO_TOKEN_ADDRESS, // Transaction goes to token contract
+      value: '0', // No native currency transfer
+      data: transferData, // ERC-20 transfer call
     }
     const message = JSON.stringify(txData)
     const recoveredAddress = ethers.verifyMessage(message, signature)
@@ -127,7 +135,7 @@ async function processTransactionSync(params: TransactionParams) {
     if (isModuleEnabled) {
       console.log(`✅ Smart Sessions module is enabled on-chain`)
 
-      const defaultSpendingLimit = BigInt('100000000000000000')
+      const defaultSpendingLimit = BigInt('42000000000000000000000000') // 42,000,000 EUR
 
       if (amountBigInt > defaultSpendingLimit) {
         return {
@@ -148,16 +156,7 @@ async function processTransactionSync(params: TransactionParams) {
       }
     }
 
-    const currentBalance = await provider.getBalance(safeAddress)
-    if (currentBalance < amountBigInt) {
-      return {
-        success: false,
-        error: 'Insufficient balance',
-        details: 'Balance verification failed before execution',
-      }
-    }
-
-    console.log(`✅ Final balance verification passed`)
+    console.log(`✅ Final EUR token balance verification passed`)
 
     statusTimestamps.verified = Date.now()
     const verifiedDuration = (statusTimestamps.verified - statusTimestamps.started) / 1000
@@ -165,9 +164,9 @@ async function processTransactionSync(params: TransactionParams) {
     const safeTransaction = await userProtocolKit.createTransaction({
       transactions: [
         {
-          to: to,
-          value: amount,
-          data: '0x',
+          to: EURO_TOKEN_ADDRESS, // Send to token contract
+          value: '0', // No native currency
+          data: transferData, // ERC-20 transfer call
         },
       ],
     })
@@ -268,22 +267,25 @@ async function processTransaction(params: TransactionParams) {
       }
     }
 
-    // Validate amount
-    const amountBigInt = BigInt(amount)
-    if (amountBigInt <= 0) {
-      sendTransactionStatus(txId, 'started', {
-        timestamp: Date.now(),
-        message: 'Amount must be greater than 0',
-      })
-      return
-    }
-
     console.log(`📤 Sending transaction from Safe ${safeAddress}`)
     console.log(`   To: ${to}`)
-    console.log(`   Amount: ${amount} wei`)
+    console.log(`   Amount (raw): ${amount}`)
+    console.log(`   Amount type: ${typeof amount}`)
     console.log(`   Chain: ${chainId}`)
     console.log(`   Session key: ${sessionKeyAddress}`)
     console.log(`   Signature provided: ${signature ? 'Yes' : 'No'}`)
+
+    // Validate amount
+    const amountBigInt = BigInt(amount)
+    console.log(`   Amount (BigInt): ${amountBigInt}`)
+
+    if (amountBigInt <= 0) {
+      sendTransactionStatus(txId, 'started', {
+        timestamp: Date.now(),
+        message: `Amount must be greater than 0 (received: ${amount})`,
+      })
+      return
+    }
 
     const w3pk = createWeb3Passkey({
       debug: process.env.NODE_ENV === 'development',
@@ -300,21 +302,28 @@ async function processTransaction(params: TransactionParams) {
 
     const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
-    const balance = await provider.getBalance(safeAddress)
+
+    // Check EUR token balance instead of native balance
+    const euroContract = new ethers.Contract(EURO_TOKEN_ADDRESS, ERC20_ABI, provider)
+    const balance = await euroContract.balanceOf(safeAddress)
 
     if (balance < amountBigInt) {
       sendTransactionStatus(txId, 'started', {
         timestamp: Date.now(),
-        message: `Insufficient balance: ${balance.toString()} wei, required: ${amount} wei`,
+        message: `Insufficient EUR balance: ${balance.toString()} wei, required: ${amount} wei`,
       })
       return
     }
 
+    // Encode ERC-20 transfer function call
+    const erc20Interface = new ethers.Interface(ERC20_ABI)
+    const transferData = erc20Interface.encodeFunctionData('transfer', [to, amount])
+
     // Session Key Validation:
     const txData = {
-      to,
-      value: amount,
-      data: '0x',
+      to: EURO_TOKEN_ADDRESS, // Transaction goes to token contract
+      value: '0', // No native currency transfer
+      data: transferData, // ERC-20 transfer call
     }
     const message = JSON.stringify(txData)
     const recoveredAddress = ethers.verifyMessage(message, signature)
@@ -342,8 +351,8 @@ async function processTransaction(params: TransactionParams) {
       if (isModuleEnabled) {
         console.log(`✅ Smart Sessions module is enabled on-chain`)
 
-        // Validate spending limits
-        const defaultSpendingLimit = BigInt('100000000000000000')
+        // Validate spending limits (200 EUR)
+        const defaultSpendingLimit = BigInt('42000000000000000000000000') // 42,000,000 EUR
 
         if (amountBigInt > defaultSpendingLimit) {
           sendTransactionStatus(txId, 'started', {
@@ -371,18 +380,19 @@ async function processTransaction(params: TransactionParams) {
         console.log(`⚠️  Smart Sessions module not enabled - using signature validation only`)
       }
 
-      // Verify Safe balance one more time right before execution
-      const currentBalance = await provider.getBalance(safeAddress)
+      // Verify EUR token balance one more time right before execution
+      const currentBalance = await euroContract.balanceOf(safeAddress)
       if (currentBalance < amountBigInt) {
         sendTransactionStatus(txId, 'started', {
           timestamp: Date.now(),
-          message: `Balance verification failed before execution: ${currentBalance.toString()} wei < ${amount} wei`,
+          message: `EUR balance verification failed before execution: ${currentBalance.toString()} wei < ${amount} wei`,
         })
         return
       }
       console.log(
-        `✅ Final balance verification passed: ${currentBalance.toString()} wei available`
+        `✅ Final EUR token balance verification passed: ${currentBalance.toString()} wei available`
       )
+      console.log(`✅ Ready to sign and execute transaction`)
 
       // Status: verified - balance is verified and we're ready to sign
       statusTimestamps.verified = Date.now()
@@ -398,13 +408,13 @@ async function processTransaction(params: TransactionParams) {
         amount,
       })
 
-      // Create Safe transaction
+      // Create Safe transaction with ERC-20 transfer
       const safeTransaction = await userProtocolKit.createTransaction({
         transactions: [
           {
-            to: to,
-            value: amount,
-            data: '0x',
+            to: EURO_TOKEN_ADDRESS, // Send to token contract
+            value: '0', // No native currency
+            data: transferData, // ERC-20 transfer call
           },
         ],
       })

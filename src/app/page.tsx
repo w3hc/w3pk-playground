@@ -400,7 +400,7 @@ export default function Home() {
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Seamlessly send and receive xDAI, gas fees is on us! ;)
+                      Seamlessly send and receive EUR, gas fees is on us! ;)
                     </Text>
                   </Box>
                   <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
