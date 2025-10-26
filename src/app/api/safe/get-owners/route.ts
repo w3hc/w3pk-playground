@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Safe from '@safe-global/protocol-kit'
+import { createWeb3Passkey } from 'w3pk'
 
 /**
- * API Route: Get Safe Owners
- *
- * This endpoint retrieves the list of owners for a Safe wallet
- *
  * POST /api/safe/get-owners
+ * Retrieve the list of owners for a Safe wallet
  * Body: { safeAddress: string, chainId: number }
  */
 
@@ -15,7 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { safeAddress, chainId } = body
 
-    // Validation
     if (!safeAddress || !chainId) {
       return NextResponse.json(
         { error: 'Missing required fields: safeAddress, chainId' },
@@ -23,33 +20,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate address
     if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress)) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
     console.log(`👥 Getting owners for Safe ${safeAddress}`)
 
-    // RPC URLs for different chains
-    const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
+    const w3pk = createWeb3Passkey({
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
     }
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
-      return NextResponse.json({ error: `Unsupported chain ID: ${chainId}` }, { status: 400 })
-    }
+    const rpcUrl = endpoints[0]
 
-    // Initialize Safe Protocol Kit
     const protocolKit = await Safe.init({
       provider: rpcUrl,
       signer: process.env.RELAYER_PRIVATE_KEY!,
       safeAddress: safeAddress,
     })
 
-    // Get owners
     const owners = await protocolKit.getOwners()
     const threshold = await protocolKit.getThreshold()
 

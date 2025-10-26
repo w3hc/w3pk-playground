@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ethers } from 'ethers'
+import { createWeb3Passkey } from 'w3pk'
 
 /**
- * API Route: Get Safe Balance
- *
- * This endpoint fetches the current balance of a Safe wallet
- *
  * POST /api/safe/balance
+ * Fetch the current balance of a Safe wallet
  * Body: { safeAddress: string, chainId: number }
  */
 
@@ -15,7 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { safeAddress, chainId } = body
 
-    // Validation
     if (!safeAddress || !chainId) {
       return NextResponse.json(
         { error: 'Missing required fields: safeAddress, chainId' },
@@ -23,27 +20,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate address
     if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress)) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
     console.log(`💰 Fetching balance for Safe ${safeAddress} on chain ${chainId}`)
 
-    // RPC URLs for different chains
-    const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
-      // Add more chains as needed
+    const w3pk = createWeb3Passkey({
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
     }
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
-      return NextResponse.json({ error: `Unsupported chain ID: ${chainId}` }, { status: 400 })
-    }
-
-    // Connect to RPC and fetch balance
+    const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const balance = await provider.getBalance(safeAddress)
 
@@ -70,49 +62,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Implementation Notes:
- *
- * To complete this endpoint:
- *
- * 1. Set up RPC connections:
- *
- * import { ethers } from 'ethers'
- *
- * const rpcUrls: Record<number, string> = {
- *   10200: 'https://rpc.chiadochain.net', // Gnosis Chiado
- *   // Add other chains...
- * }
- *
- * const provider = new ethers.JsonRpcProvider(rpcUrls[chainId])
- *
- * 2. Fetch balance:
- *
- * const balance = await provider.getBalance(safeAddress)
- * const balanceInWei = balance.toString()
- *
- * 3. Optionally fetch token balances:
- *
- * // For ERC20 tokens
- * const tokenContract = new ethers.Contract(
- *   tokenAddress,
- *   ['function balanceOf(address) view returns (uint256)'],
- *   provider
- * )
- *
- * const tokenBalance = await tokenContract.balanceOf(safeAddress)
- *
- * 4. Return comprehensive balance data:
- *
- * return {
- *   native: balanceInWei,
- *   tokens: [
- *     {
- *       address: tokenAddress,
- *       symbol: 'USDC',
- *       balance: tokenBalance.toString(),
- *       decimals: 6,
- *     },
- *   ],
- * }
- */

@@ -25,7 +25,7 @@ interface W3pkUser {
 
 interface DerivedWallet {
   address: string
-  privateKey: string
+  privateKey?: string
 }
 
 interface W3pkType {
@@ -127,7 +127,6 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
   const w3pk = useMemo(
     () =>
       createWeb3Passkey({
-        apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
         stealthAddresses: {}, // Enable stealth address generation
         debug: process.env.NODE_ENV === 'development',
         onAuthStateChanged: handleAuthStateChanged,
@@ -189,9 +188,8 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
 
       await w3pk.register({
         username,
-        ethereumAddress: '0x0000000000000000000000000000000000000000', // TODO: fix thi in w3pk
       })
-      console.log('Registration successful, address:', w3pk.walletAddress)
+      console.log('Registration successful')
 
       toast({
         title: 'Registration Successful! 🎉',
@@ -229,11 +227,10 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       console.log('=== Starting Login with w3pk ===')
 
       const result = await w3pk.login()
-      console.log('Login successful, user:', result.user?.username)
+      console.log('Login successful, user:', result.username)
 
-      const hasWallet = w3pk.isAuthenticated && w3pk.walletAddress
-      const displayName =
-        result.user?.displayName || w3pk.user?.displayName || result.user?.username || 'Anon'
+      const hasWallet = w3pk.isAuthenticated
+      const displayName = result.displayName || result.username || 'Anon'
 
       toast({
         title: 'Login Successful! ✅',
@@ -278,9 +275,15 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     try {
       console.log('=== Starting Message Signing with w3pk ===')
 
-      // ALWAYS require fresh authentication for signing operations
-      await w3pk.login()
-      console.log('Fresh authentication completed')
+      // Check if we have an active session, if not, require fresh authentication
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
+        await w3pk.login()
+        console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
+      }
 
       const signature = await w3pk.signMessage(message)
       console.log('Message signed successfully')
@@ -311,12 +314,14 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     try {
       console.log(`=== Deriving Wallet at Index ${index} ===`)
 
-      // Check if we need fresh authentication
-      // If w3pk.isAuthenticated is false, we need to login first
-      if (!w3pk.isAuthenticated) {
-        console.log('SDK not authenticated, requiring fresh login...')
+      // Check if we have an active session
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
         await w3pk.login()
         console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
       }
 
       const derivedWallet = await w3pk.deriveWallet(index)
@@ -491,11 +496,14 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         throw new Error('Stealth address module not initialized')
       }
 
-      // Ensure fresh authentication for accessing encrypted seed
-      if (!w3pk.isAuthenticated) {
-        console.log('SDK not authenticated, requiring fresh login...')
+      // Check if we have an active session
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
         await w3pk.login()
         console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
       }
 
       const stealthKeys = await w3pk.stealth.getKeys()

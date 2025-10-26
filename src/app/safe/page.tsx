@@ -337,6 +337,10 @@ export default function SafePage() {
       // Derive wallet at index 0 to get the owner's private key
       const ownerWallet = await deriveWallet(0)
 
+      if (!ownerWallet.privateKey) {
+        throw new Error('Owner wallet private key not available')
+      }
+
       // User signs the transaction data with W3PK for verification
       const message = JSON.stringify({
         to: moduleEnableTxData.to,
@@ -425,11 +429,20 @@ export default function SafePage() {
 
       // Sign with the session key's private key
       const message = JSON.stringify(txData)
+
+      if (!sessionKeyWallet.privateKey) {
+        throw new Error('Session key private key not available')
+      }
+
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
       const signature = await sessionKeySigner.signMessage(message)
 
       // Derive the owner wallet (index 0) to sign the Safe transaction
       const ownerWallet = await deriveWallet(0)
+
+      if (!ownerWallet.privateKey) {
+        throw new Error('Owner wallet private key not available')
+      }
 
       // Try WebSocket mode first, fall back to sync mode
       const response = await fetch('/api/safe/send-tx', {

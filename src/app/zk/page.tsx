@@ -315,9 +315,7 @@ npm install snarkjs circomlibjs`}
             >
               {`import { createWeb3Passkey } from 'w3pk'
 
-const w3pk = createWeb3Passkey({
-  apiBaseUrl: 'https://webauthn.w3hc.org'
-})
+const w3pk = createWeb3Passkey()
 
 // Login with w3pk
 await w3pk.login()

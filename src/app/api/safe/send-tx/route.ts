@@ -4,18 +4,14 @@ import Safe from '@safe-global/protocol-kit'
 import { getAccount, OWNABLE_VALIDATOR_ADDRESS } from '@rhinestone/module-sdk'
 import { sendTransactionStatus } from '@/lib/websocket'
 import { randomBytes } from 'crypto'
+import { createWeb3Passkey } from 'w3pk'
 
-// Smart Sessions Module address
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
 
 /**
- * API Route: Send Transaction
- *
- * This endpoint relays transactions from a Safe wallet
- * The relayer pays gas fees, making it gasless for the user
- *
  * POST /api/safe/send-tx
- * Body: { userAddress: string, safeAddress: string, chainId: number, to: string, amount: string }
+ * Send gasless transaction from Safe wallet (relayer pays fees)
+ * Body: { userAddress, safeAddress, chainId, to, amount, sessionKeyAddress, signature, userPrivateKey }
  */
 
 interface TransactionParams {
@@ -31,7 +27,6 @@ interface TransactionParams {
   userPrivateKey: string
 }
 
-// Synchronous function to process transaction (for non-WebSocket mode)
 async function processTransactionSync(params: TransactionParams) {
   const {
     txId,
@@ -55,7 +50,6 @@ async function processTransactionSync(params: TransactionParams) {
   }
 
   try {
-    // Validate session key expiration
     if (sessionKeyValidUntil) {
       const now = Math.floor(Date.now() / 1000)
       if (now > sessionKeyValidUntil) {
@@ -67,7 +61,6 @@ async function processTransactionSync(params: TransactionParams) {
       }
     }
 
-    // Validate amount
     const amountBigInt = BigInt(amount)
     if (amountBigInt <= 0) {
       return {
@@ -81,22 +74,19 @@ async function processTransactionSync(params: TransactionParams) {
     console.log(`   Amount: ${amount} wei`)
     console.log(`   Chain: ${chainId}`)
 
-    // RPC URLs for different chains
-    const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
-    }
+    const w3pk = createWeb3Passkey({
+      debug: process.env.NODE_ENV === 'development',
+    })
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
       return {
         success: false,
-        error: `Unsupported chain ID: ${chainId}`,
+        error: `No RPC endpoints available for chain ID: ${chainId}`,
       }
     }
 
-    // Initialize provider and check balance
+    const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const balance = await provider.getBalance(safeAddress)
 
@@ -108,7 +98,6 @@ async function processTransactionSync(params: TransactionParams) {
       }
     }
 
-    // Session Key Validation
     const txData = {
       to,
       value: amount,
@@ -127,7 +116,6 @@ async function processTransactionSync(params: TransactionParams) {
 
     console.log(`✅ Signature verified from session key ${sessionKeyAddress}`)
 
-    // Check if Smart Sessions module is enabled on-chain
     const userProtocolKit = await Safe.init({
       provider: rpcUrl,
       signer: userPrivateKey,
@@ -139,7 +127,6 @@ async function processTransactionSync(params: TransactionParams) {
     if (isModuleEnabled) {
       console.log(`✅ Smart Sessions module is enabled on-chain`)
 
-      // Validate spending limits
       const defaultSpendingLimit = BigInt('100000000000000000')
 
       if (amountBigInt > defaultSpendingLimit) {
@@ -152,7 +139,6 @@ async function processTransactionSync(params: TransactionParams) {
 
       console.log(`✅ Spending limit check passed`)
 
-      // Validate transaction target
       if (to === '0x0000000000000000000000000000000000000000') {
         return {
           success: false,
@@ -162,7 +148,6 @@ async function processTransactionSync(params: TransactionParams) {
       }
     }
 
-    // Verify Safe balance one more time
     const currentBalance = await provider.getBalance(safeAddress)
     if (currentBalance < amountBigInt) {
       return {
@@ -174,11 +159,9 @@ async function processTransactionSync(params: TransactionParams) {
 
     console.log(`✅ Final balance verification passed`)
 
-    // Status: verified
     statusTimestamps.verified = Date.now()
     const verifiedDuration = (statusTimestamps.verified - statusTimestamps.started) / 1000
 
-    // Create Safe transaction
     const safeTransaction = await userProtocolKit.createTransaction({
       transactions: [
         {
@@ -189,11 +172,9 @@ async function processTransactionSync(params: TransactionParams) {
       ],
     })
 
-    // Sign with user (the owner)
     const signedSafeTx = await userProtocolKit.signTransaction(safeTransaction)
     console.log(`   Transaction signed by user (owner)`)
 
-    // Execute transaction (relayer pays gas, user signed)
     const relayerProtocolKit = await Safe.init({
       provider: rpcUrl,
       signer: process.env.RELAYER_PRIVATE_KEY!,
@@ -202,7 +183,6 @@ async function processTransactionSync(params: TransactionParams) {
 
     const executeTxResponse = await relayerProtocolKit.executeTransaction(signedSafeTx)
 
-    // Get transaction hash from the response
     let txHash: string | undefined
 
     if (executeTxResponse.transactionResponse) {
@@ -228,7 +208,6 @@ async function processTransactionSync(params: TransactionParams) {
 
     console.log(`✅ Transaction executed with hash: ${txHash}`)
 
-    // Status: confirmed
     statusTimestamps.confirmed = Date.now()
     const confirmedDuration = (statusTimestamps.confirmed - statusTimestamps.started) / 1000
 
@@ -306,23 +285,20 @@ async function processTransaction(params: TransactionParams) {
     console.log(`   Session key: ${sessionKeyAddress}`)
     console.log(`   Signature provided: ${signature ? 'Yes' : 'No'}`)
 
-    // RPC URLs for different chains
-    const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
-    }
+    const w3pk = createWeb3Passkey({
+      debug: process.env.NODE_ENV === 'development',
+    })
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
       sendTransactionStatus(txId, 'started', {
         timestamp: Date.now(),
-        message: `Unsupported chain ID: ${chainId}`,
+        message: `No RPC endpoints available for chain ID: ${chainId}`,
       })
       return
     }
 
-    // Initialize provider and check balance
+    const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const balance = await provider.getBalance(safeAddress)
 
@@ -630,51 +606,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Implementation Notes:
- *
- * Current Implementation (Session Key Signature Verification):
- * 1. User signs transaction data with their W3PK (using session key derived path)
- * 2. Backend verifies signature matches sessionKeyAddress
- * 3. Relayer submits transaction to Safe (pays gas)
- * 4. User never pays gas, but must have valid session key signature
- *
- * Full Production Implementation (with Session Keys Module):
- *
- * 1. Verify Session Key Permissions:
- *
- * // Check session key is enabled on Safe
- * // Verify not expired
- * // Check spending limit not exceeded
- * const sessionKeysModule = getSessionKeyModule({
- *   moduleAddress: SESSION_KEYS_MODULE_ADDRESS,
- *   provider,
- * })
- *
- * const isValid = await sessionKeysModule.isSessionKeyEnabled(
- *   safeAddress,
- *   sessionKeyAddress
- * )
- *
- * 2. Execute with Session Keys Module:
- *
- * // Module validates permissions and executes
- * const txResponse = await sessionKeysModule.executeTransactionWithSessionKey({
- *   safe: safeAddress,
- *   sessionKey: sessionKeyAddress,
- *   signature: signature, // Signed by W3PK with derived path
- *   transaction: {
- *     to,
- *     value: amount,
- *     data: '0x',
- *   },
- * })
- *
- * 3. Error Handling:
- *    - Insufficient balance
- *    - Session key expired
- *    - Spending limit exceeded
- *    - Invalid signature
- *    - Session key not enabled
- *    - Network errors
- */

@@ -6,19 +6,15 @@ import {
   encodeValidatorNonce,
   OWNABLE_VALIDATOR_ADDRESS,
 } from '@rhinestone/module-sdk'
+import { createWeb3Passkey } from 'w3pk'
 
-// Smart Sessions Module address (deterministic across all EVM chains)
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
 const OWNABLE_VALIDATOR = '0x000000000013fdB5234E4E3162a810F54d9f7E98'
 
 /**
- * API Route: Create Session Key
- *
- * This endpoint creates a new session key for a Safe wallet
- * Session keys allow delegated transaction execution with specific permissions
- *
  * POST /api/safe/create-session-key
- * Body: { userAddress: string, safeAddress: string, chainId: number }
+ * Create a session key for a Safe wallet with specific permissions
+ * Body: { userAddress: string, safeAddress: string, chainId: number, sessionKeyAddress: string }
  */
 
 export async function POST(request: NextRequest) {
@@ -26,7 +22,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { userAddress, safeAddress, chainId, sessionKeyAddress, sessionKeyIndex } = body
 
-    // Validation
     if (!userAddress || !safeAddress || !chainId || !sessionKeyAddress) {
       return NextResponse.json(
         { error: 'Missing required fields: userAddress, safeAddress, chainId, sessionKeyAddress' },
@@ -34,7 +29,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate addresses
     if (
       !/^0x[a-fA-F0-9]{40}$/.test(userAddress) ||
       !/^0x[a-fA-F0-9]{40}$/.test(safeAddress) ||
@@ -47,45 +41,40 @@ export async function POST(request: NextRequest) {
     console.log(`   Session key address: ${sessionKeyAddress}`)
     console.log(`   Derived index: ${sessionKeyIndex || 'not specified'}`)
 
-    // Get RPC provider
-    const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+    const w3pk = createWeb3Passkey({
+      debug: process.env.NODE_ENV === 'development',
+    })
 
-    // Set expiry to 24 hours from now
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
+    }
+
+    const rpcUrl = endpoints[0]
     const now = Math.floor(Date.now() / 1000)
-    const expiresAt = now + 86400 // 24 hours
+    const expiresAt = now + 86400
     const expiresAtDate = new Date(expiresAt * 1000)
 
-    // Default permissions for session key
     const permissions = {
-      spendingLimit: '100000000000000000', // 0.1 ETH in wei
-      allowedTokens: ['0x0000000000000000000000000000000000000000'], // Native token
+      spendingLimit: '100000000000000000',
+      allowedTokens: ['0x0000000000000000000000000000000000000000'],
       validAfter: now,
       validUntil: expiresAt,
     }
 
-    // Initialize Safe Protocol Kit
     const protocolKit = await Safe.init({
       provider: rpcUrl,
       signer: process.env.RELAYER_PRIVATE_KEY,
       safeAddress: safeAddress,
     })
 
-    // Step 1: Check if Smart Sessions module is enabled
     const isModuleEnabled = await protocolKit.isModuleEnabled(SMART_SESSIONS_MODULE)
     console.log(`   Smart Sessions module enabled: ${isModuleEnabled}`)
 
     if (!isModuleEnabled) {
       console.log(`   Enabling Smart Sessions module...`)
 
-      // Enable the module - this requires owner signature
-      // Since user is the owner and relayer is not, we need user to sign this
-      // We return the transaction data and user signs it via execute-tx endpoint
-
-      // Create enable module transaction
       const enableModuleTx = await protocolKit.createEnableModuleTx(SMART_SESSIONS_MODULE)
-
-      // ✅ IMPLEMENTED: User signs this transaction via execute-tx endpoint
-      // The frontend calls /api/safe/execute-tx with user's private key
 
       return NextResponse.json(
         {
@@ -104,39 +93,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 2: Register session key on Smart Sessions module
-    // ✅ ENHANCED: Full Smart Sessions Module SDK integration
     console.log(`   Registering session key on Smart Sessions module...`)
     console.log(`   Session validator: ${OWNABLE_VALIDATOR}`)
     console.log(`   Spending limit: ${permissions.spendingLimit} wei`)
     console.log(`   Valid until: ${expiresAtDate.toISOString()}`)
 
     try {
-      // Get account object for the Safe
       const account = getAccount({
         address: safeAddress as `0x${string}`,
         type: 'safe',
       })
 
-      // Create session validator using Ownable Validator
       getOwnableValidator({
         owners: [sessionKeyAddress as `0x${string}`],
         threshold: 1,
       })
 
-      // Encode validator nonce for session (used for on-chain session tracking)
       encodeValidatorNonce({
         account,
         validator: OWNABLE_VALIDATOR_ADDRESS as `0x${string}`,
       })
 
-      console.log(`   Session configuration created with Rhinestone SDK`)
+      console.log(`   ✅ Session configuration created with Rhinestone SDK`)
       console.log(`   Validator: ${OWNABLE_VALIDATOR_ADDRESS}`)
       console.log(`   Session key: ${sessionKeyAddress}`)
-      console.log(`   ✅ On-chain session key validation enabled`)
-      console.log(`   ✅ Spending limits configured`)
-      console.log(`   ✅ Action policies defined`)
-      console.log(`   Ready to sign transactions with W3PK derived path`)
 
       return NextResponse.json(
         {
@@ -156,7 +136,6 @@ export async function POST(request: NextRequest) {
       )
     } catch (sdkError: any) {
       console.error('Rhinestone SDK error:', sdkError)
-      // Fallback to simplified implementation if SDK fails
       console.log(`   ⚠️  Falling back to simplified session key creation`)
 
       return NextResponse.json(
@@ -184,61 +163,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Implementation Notes:
- *
- * To complete this endpoint, you'll need to:
- *
- * 1. Install Session Keys Module:
- *    npm install @rhinestone/module-sdk
- *
- * 2. Use Derived Address as Session Key:
- *
- * // The sessionKeyAddress is a W3PK derived address (e.g., derivedAddresses[1])
- * // User controls this via their passkey - no need to store private keys!
- * // Frontend will sign transactions with W3PK using the derived path
- *
- * 3. Enable Session Key on Safe:
- *
- * import { getSessionKeyModule } from '@rhinestone/module-sdk'
- *
- * const sessionKeysModule = getSessionKeyModule({
- *   moduleAddress: SESSION_KEYS_MODULE_ADDRESS,
- *   provider,
- * })
- *
- * // Define permissions
- * const sessionKeyData = {
- *   sessionKey: sessionKeyAddress,
- *   validAfter: Math.floor(Date.now() / 1000),
- *   validUntil: Math.floor(Date.now() / 1000) + 86400, // 24 hours
- *   permissions: {
- *     spendingLimit: ethers.parseEther('0.1'),
- *     allowedTokens: [ethers.ZeroAddress], // Native token
- *   },
- * }
- *
- * // Create transaction to enable session key
- * const enableSessionKeyTx = await sessionKeysModule.getEnableSessionKeyTransaction(
- *   safeAddress,
- *   sessionKeyData
- * )
- *
- * // Execute through Safe
- * const protocolKit = await Safe.init({
- *   provider: providerUrl,
- *   signer: relayerPrivateKey,
- *   safeAddress,
- * })
- *
- * const safeTransaction = await protocolKit.createTransaction({
- *   transactions: [enableSessionKeyTx],
- * })
- *
- * await protocolKit.executeTransaction(safeTransaction)
- *
- * 4. Store Session Key Info:
- *    - Store session key private key encrypted
- *    - Link to Safe address and user
- *    - Store permissions for validation
- */
