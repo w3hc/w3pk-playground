@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ethers } from 'ethers'
 import Safe from '@safe-global/protocol-kit'
 import { createWeb3Passkey } from 'w3pk'
+import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
 
 /**
  * POST /api/safe/deploy-safe
@@ -80,14 +81,22 @@ export async function POST(request: NextRequest) {
       deploymentBlockNumber = receipt?.blockNumber
       console.log(`✅ Safe deployed at ${safeAddress} in block ${deploymentBlockNumber}`)
 
-      console.log(`💰 Funding Safe with 0.05 xDAI...`)
-      const fundingTx = await relayerWallet.sendTransaction({
-        to: safeAddress,
-        value: ethers.parseEther('0.05'),
-      })
+      // console.log(`💰 Funding Safe with 0.05 xDAI...`)
+      // const fundingTx = await relayerWallet.sendTransaction({
+      //   to: safeAddress,
+      //   value: ethers.parseEther('0.05'),
+      // })
 
-      await fundingTx.wait()
-      console.log(`✅ Funded Safe with 0.05 xDAI`)
+      // await fundingTx.wait()
+      // console.log(`✅ Funded Safe with 0.05 xDAI`)
+
+      // Mint 10 EUR to the newly deployed Safe
+      console.log(`💶 Minting 10 EUR to Safe...`)
+      const euroContract = new ethers.Contract(EURO_TOKEN_ADDRESS, ERC20_ABI, relayerWallet)
+      const mintAmount = ethers.parseUnits('10', 18) // 10 EUR with 18 decimals
+      const mintTx = await euroContract.mint(safeAddress, mintAmount)
+      await mintTx.wait()
+      console.log(`✅ Minted 10 EUR to Safe`)
     } else {
       console.log(`✅ Safe already exists at ${safeAddress}`)
 

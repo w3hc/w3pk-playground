@@ -29,8 +29,16 @@ export async function querySafeTransactionsFromBlockscout(
 ): Promise<SafeTransactionEvent[]> {
   try {
     const blockscoutUrl = 'https://gnosis-chiado.blockscout.com/api'
+    const EURO_TOKEN_ADDRESS = '0xfD988C187183FCb484f93a360BaA99e45B48c7Fb'
 
-    // Fetch regular transactions
+    // Fetch ERC-20 token transfers (EUR token)
+    const tokenTxUrl = `${blockscoutUrl}?module=account&action=tokentx&address=${safeAddress}&contractaddress=${EURO_TOKEN_ADDRESS}&sort=desc`
+    console.log(`🔍 Querying Blockscout for EUR token transfers for ${safeAddress}`)
+
+    const tokenResponse = await fetch(tokenTxUrl)
+    const tokenData = await tokenResponse.json()
+
+    // Fetch regular transactions (for native currency - kept for compatibility)
     const txListUrl = `${blockscoutUrl}?module=account&action=txlist&address=${safeAddress}&sort=desc`
     console.log(`🔍 Querying Blockscout for regular transactions for ${safeAddress}`)
 
@@ -46,6 +54,35 @@ export async function querySafeTransactionsFromBlockscout(
 
     const transactions: SafeTransactionEvent[] = []
     const incomingTxHashes = new Set<string>() // Track incoming transaction hashes
+
+    // Process ERC-20 token transfers FIRST (these are what we care about now)
+    if (tokenData.status === '1' && tokenData.result) {
+      console.log(`   Found ${tokenData.result.length} EUR token transfers`)
+
+      const tokenTxs = tokenData.result
+        .filter((tx: any) => tx.value !== '0')
+        .map((tx: any) => ({
+          blockNumber: parseInt(tx.blockNumber, 10),
+          blockTimestamp: parseInt(tx.timeStamp, 10),
+          transactionHash: tx.hash,
+          to: tx.to || '',
+          value: tx.value,
+          from: tx.from,
+          operation: 0,
+          safeTxHash: tx.hash,
+          payment: '0',
+        }))
+
+      console.log(`   Added ${tokenTxs.length} EUR token transfers to history`)
+      transactions.push(...tokenTxs)
+
+      // Track token transfer hashes to avoid duplicates
+      tokenTxs.forEach((tx: SafeTransactionEvent) => {
+        if (tx.to.toLowerCase() === safeAddress.toLowerCase()) {
+          incomingTxHashes.add(tx.transactionHash)
+        }
+      })
+    }
 
     // Process regular transactions (incoming payments TO the Safe)
     if (txData.status === '1' && txData.result) {
