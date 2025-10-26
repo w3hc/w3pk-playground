@@ -276,9 +276,15 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     try {
       console.log('=== Starting Message Signing with w3pk ===')
 
-      // ALWAYS require fresh authentication for signing operations
-      await w3pk.login()
-      console.log('Fresh authentication completed')
+      // Check if we have an active session, if not, require fresh authentication
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
+        await w3pk.login()
+        console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
+      }
 
       const signature = await w3pk.signMessage(message)
       console.log('Message signed successfully')
@@ -309,12 +315,14 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     try {
       console.log(`=== Deriving Wallet at Index ${index} ===`)
 
-      // Check if we need fresh authentication
-      // If w3pk.isAuthenticated is false, we need to login first
-      if (!w3pk.isAuthenticated) {
-        console.log('SDK not authenticated, requiring fresh login...')
+      // Check if we have an active session
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
         await w3pk.login()
         console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
       }
 
       const derivedWallet = await w3pk.deriveWallet(index)
@@ -489,11 +497,14 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         throw new Error('Stealth address module not initialized')
       }
 
-      // Ensure fresh authentication for accessing encrypted seed
-      if (!w3pk.isAuthenticated) {
-        console.log('SDK not authenticated, requiring fresh login...')
+      // Check if we have an active session
+      const hasSession = w3pk.hasActiveSession()
+      if (!hasSession) {
+        console.log('No active session, requiring fresh authentication...')
         await w3pk.login()
         console.log('Fresh authentication completed')
+      } else {
+        console.log('Active session detected, using existing session')
       }
 
       const stealthKeys = await w3pk.stealth.getKeys()
