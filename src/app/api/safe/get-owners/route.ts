@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Safe from '@safe-global/protocol-kit'
+import { createWeb3Passkey } from 'w3pk'
 
 /**
  * POST /api/safe/get-owners
@@ -25,16 +26,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`👥 Getting owners for Safe ${safeAddress}`)
 
-    const rpcUrls: Record<number, string> = {
-      10200: 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
+    const w3pk = createWeb3Passkey({
+      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
     }
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
-      return NextResponse.json({ error: `Unsupported chain ID: ${chainId}` }, { status: 400 })
-    }
+    const rpcUrl = endpoints[0]
 
     const protocolKit = await Safe.init({
       provider: rpcUrl,
@@ -42,7 +44,6 @@ export async function POST(request: NextRequest) {
       safeAddress: safeAddress,
     })
 
-    // Get owners
     const owners = await protocolKit.getOwners()
     const threshold = await protocolKit.getThreshold()
 

@@ -6,6 +6,7 @@ import {
   encodeValidatorNonce,
   OWNABLE_VALIDATOR_ADDRESS,
 } from '@rhinestone/module-sdk'
+import { createWeb3Passkey } from 'w3pk'
 
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
 const OWNABLE_VALIDATOR = '0x000000000013fdB5234E4E3162a810F54d9f7E98'
@@ -40,7 +41,17 @@ export async function POST(request: NextRequest) {
     console.log(`   Session key address: ${sessionKeyAddress}`)
     console.log(`   Derived index: ${sessionKeyIndex || 'not specified'}`)
 
-    const rpcUrl = 'https://rpc.chiadochain.net'!
+    const w3pk = createWeb3Passkey({
+      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
+    }
+
+    const rpcUrl = endpoints[0]
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 86400
     const expiresAtDate = new Date(expiresAt * 1000)

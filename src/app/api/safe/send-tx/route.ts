@@ -4,6 +4,7 @@ import Safe from '@safe-global/protocol-kit'
 import { getAccount, OWNABLE_VALIDATOR_ADDRESS } from '@rhinestone/module-sdk'
 import { sendTransactionStatus } from '@/lib/websocket'
 import { randomBytes } from 'crypto'
+import { createWeb3Passkey } from 'w3pk'
 
 const SMART_SESSIONS_MODULE = '0x00000000008bDABA73cD9815d79069c247Eb4bDA'
 
@@ -73,20 +74,20 @@ async function processTransactionSync(params: TransactionParams) {
     console.log(`   Amount: ${amount} wei`)
     console.log(`   Chain: ${chainId}`)
 
-    const rpcUrls: Record<number, string> = {
-      10200: 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
-    }
+    const w3pk = createWeb3Passkey({
+      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
+      debug: process.env.NODE_ENV === 'development',
+    })
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
       return {
         success: false,
-        error: `Unsupported chain ID: ${chainId}`,
+        error: `No RPC endpoints available for chain ID: ${chainId}`,
       }
     }
 
+    const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const balance = await provider.getBalance(safeAddress)
 
@@ -285,23 +286,21 @@ async function processTransaction(params: TransactionParams) {
     console.log(`   Session key: ${sessionKeyAddress}`)
     console.log(`   Signature provided: ${signature ? 'Yes' : 'No'}`)
 
-    // RPC URLs for different chains
-    const rpcUrls: Record<number, string> = {
-      10200: 'https://rpc.chiadochain.net',
-      11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
-      84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
-    }
+    const w3pk = createWeb3Passkey({
+      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
+      debug: process.env.NODE_ENV === 'development',
+    })
 
-    const rpcUrl = rpcUrls[chainId]
-    if (!rpcUrl) {
+    const endpoints = await w3pk.getEndpoints(chainId)
+    if (!endpoints || endpoints.length === 0) {
       sendTransactionStatus(txId, 'started', {
         timestamp: Date.now(),
-        message: `Unsupported chain ID: ${chainId}`,
+        message: `No RPC endpoints available for chain ID: ${chainId}`,
       })
       return
     }
 
-    // Initialize provider and check balance
+    const rpcUrl = endpoints[0]
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const balance = await provider.getBalance(safeAddress)
 

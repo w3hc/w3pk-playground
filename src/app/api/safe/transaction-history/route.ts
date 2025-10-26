@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchSafeTransactionHistory } from '@/lib/safeEventPoller'
+import { createWeb3Passkey } from 'w3pk'
 
 /**
  * GET /api/safe/transaction-history
@@ -25,13 +26,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
-    let rpcUrl: string
-    if (chainId === '10200') {
-      rpcUrl = 'https://rpc.chiadochain.net'!
-    } else {
-      return NextResponse.json({ error: 'Unsupported chain ID' }, { status: 400 })
+    const w3pk = createWeb3Passkey({
+      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
+      debug: process.env.NODE_ENV === 'development',
+    })
+
+    const endpoints = await w3pk.getEndpoints(parseInt(chainId, 10))
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
     }
 
+    const rpcUrl = endpoints[0]
     const startBlock = fromBlock ? parseInt(fromBlock, 10) : 18401088
 
     console.log(`📖 Fetching transaction history for Safe ${safeAddress}`)
