@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Safe from '@safe-global/protocol-kit'
 
 /**
- * API Route: Get Safe Owners
- *
- * This endpoint retrieves the list of owners for a Safe wallet
- *
  * POST /api/safe/get-owners
+ * Retrieve the list of owners for a Safe wallet
  * Body: { safeAddress: string, chainId: number }
  */
 
@@ -15,7 +12,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { safeAddress, chainId } = body
 
-    // Validation
     if (!safeAddress || !chainId) {
       return NextResponse.json(
         { error: 'Missing required fields: safeAddress, chainId' },
@@ -23,14 +19,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate address
     if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress)) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
     console.log(`👥 Getting owners for Safe ${safeAddress}`)
 
-    // RPC URLs for different chains
     const rpcUrls: Record<number, string> = {
       10200: 'https://rpc.chiadochain.net',
       11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
@@ -42,7 +36,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Unsupported chain ID: ${chainId}` }, { status: 400 })
     }
 
-    // Initialize Safe Protocol Kit
     const protocolKit = await Safe.init({
       provider: rpcUrl,
       signer: process.env.RELAYER_PRIVATE_KEY!,

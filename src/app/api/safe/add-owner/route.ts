@@ -3,12 +3,8 @@ import { ethers } from 'ethers'
 import Safe from '@safe-global/protocol-kit'
 
 /**
- * API Route: Add Owner to Safe
- *
- * This endpoint adds the relayer as an owner to an existing Safe
- * This allows the relayer to execute transactions on behalf of the user
- *
  * POST /api/safe/add-owner
+ * Add the relayer as an owner to an existing Safe
  * Body: { safeAddress: string, chainId: number, userPrivateKey: string }
  */
 
@@ -17,7 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { safeAddress, chainId, userPrivateKey } = body
 
-    // Validation
     if (!safeAddress || !chainId || !userPrivateKey) {
       return NextResponse.json(
         { error: 'Missing required fields: safeAddress, chainId, userPrivateKey' },
@@ -25,14 +20,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate address
     if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress)) {
       return NextResponse.json({ error: 'Invalid Safe address' }, { status: 400 })
     }
 
     console.log(`👥 Adding relayer as owner to Safe ${safeAddress}`)
 
-    // Get chain RPC
     const rpcUrl = 'https://rpc.chiadochain.net'!
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY!, provider)
@@ -41,7 +34,6 @@ export async function POST(request: NextRequest) {
     console.log(`   Relayer address: ${relayerWallet.address}`)
     console.log(`   User address: ${userWallet.address}`)
 
-    // Initialize Safe Protocol Kit with user's signer
     const userProtocolKit = await Safe.init({
       provider: rpcUrl,
       signer: userPrivateKey,

@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchSafeTransactionHistory } from '@/lib/safeEventPoller'
 
 /**
- * API Route: Get Safe Transaction History from Blockchain
- *
- * Queries ExecutionSuccess events from the Safe contract directly
- * instead of relying on localStorage
- *
- * GET /api/safe/transaction-history?safeAddress=0x...&userAddress=0x...&chainId=10200&fromBlock=123456
+ * GET /api/safe/transaction-history
+ * Query ExecutionSuccess events from Safe contract
+ * Query params: safeAddress, userAddress, chainId, fromBlock (optional)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +14,6 @@ export async function GET(request: NextRequest) {
     const chainId = searchParams.get('chainId')
     const fromBlock = searchParams.get('fromBlock')
 
-    // Validation
     if (!safeAddress || !userAddress || !chainId) {
       return NextResponse.json(
         { error: 'Missing required parameters: safeAddress, userAddress, chainId' },
@@ -25,12 +21,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Validate Ethereum addresses
     if (!/^0x[a-fA-F0-9]{40}$/.test(safeAddress) || !/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 })
     }
 
-    // Get RPC URL for the chain
     let rpcUrl: string
     if (chainId === '10200') {
       rpcUrl = 'https://rpc.chiadochain.net'!
@@ -38,13 +32,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unsupported chain ID' }, { status: 400 })
     }
 
-    // Default to block 0 if not provided, or use deployment block if available
     const startBlock = fromBlock ? parseInt(fromBlock, 10) : 18401088
 
     console.log(`📖 Fetching transaction history for Safe ${safeAddress}`)
     console.log(`   Chain: ${chainId}, From block: ${startBlock}`)
 
-    // Fetch transaction history from blockchain
     const transactions = await fetchSafeTransactionHistory(
       rpcUrl,
       safeAddress,
