@@ -25,7 +25,7 @@ interface W3pkUser {
 
 interface DerivedWallet {
   address: string
-  privateKey: string
+  privateKey?: string
 }
 
 interface W3pkType {
@@ -127,7 +127,6 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
   const w3pk = useMemo(
     () =>
       createWeb3Passkey({
-        apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
         stealthAddresses: {}, // Enable stealth address generation
         debug: process.env.NODE_ENV === 'development',
         onAuthStateChanged: handleAuthStateChanged,
@@ -187,11 +186,11 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       setIsLoading(true)
       console.log('=== Starting Registration with w3pk ===')
 
-      await w3pk.register({
+      const { mnemonic } = await w3pk.register({
         username,
-        ethereumAddress: '0x0000000000000000000000000000000000000000', // TODO: fix thi in w3pk
       })
-      console.log('Registration successful, address:', w3pk.walletAddress)
+      console.log('Registration successful')
+      console.log('⚠️ SAVE THIS RECOVERY PHRASE:', mnemonic)
 
       toast({
         title: 'Registration Successful! 🎉',
@@ -229,11 +228,10 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       console.log('=== Starting Login with w3pk ===')
 
       const result = await w3pk.login()
-      console.log('Login successful, user:', result.user?.username)
+      console.log('Login successful, user:', result.username)
 
-      const hasWallet = w3pk.isAuthenticated && w3pk.walletAddress
-      const displayName =
-        result.user?.displayName || w3pk.user?.displayName || result.user?.username || 'Anon'
+      const hasWallet = w3pk.isAuthenticated
+      const displayName = result.displayName || result.username || 'Anon'
 
       toast({
         title: 'Login Successful! ✅',

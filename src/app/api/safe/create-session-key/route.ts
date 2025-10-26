@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
     console.log(`   Derived index: ${sessionKeyIndex || 'not specified'}`)
 
     const w3pk = createWeb3Passkey({
-      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
       debug: process.env.NODE_ENV === 'development',
     })
 

@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
     console.log(`💰 Fetching balance for Safe ${safeAddress} on chain ${chainId}`)
 
     const w3pk = createWeb3Passkey({
-      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
       debug: process.env.NODE_ENV === 'development',
     })
 

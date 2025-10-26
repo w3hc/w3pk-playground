@@ -28,13 +28,15 @@ export async function POST(request: NextRequest) {
     console.log(`📦 Deploying Safe for ${userAddress} on chain ${chainId}`)
 
     const w3pk = createWeb3Passkey({
-      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
       debug: process.env.NODE_ENV === 'development',
     })
 
     const endpoints = await w3pk.getEndpoints(chainId)
     if (!endpoints || endpoints.length === 0) {
-      return NextResponse.json({ error: `No RPC endpoints available for chain ID: ${chainId}` }, { status: 400 })
+      return NextResponse.json(
+        { error: `No RPC endpoints available for chain ID: ${chainId}` },
+        { status: 400 }
+      )
     }
 
     const rpcUrl = endpoints[0]
@@ -78,28 +80,28 @@ export async function POST(request: NextRequest) {
       deploymentBlockNumber = receipt?.blockNumber
       console.log(`✅ Safe deployed at ${safeAddress} in block ${deploymentBlockNumber}`)
 
-      console.log(`💰 Funding Safe with 0.1 xDAI...`)
+      console.log(`💰 Funding Safe with 0.05 xDAI...`)
       const fundingTx = await relayerWallet.sendTransaction({
         to: safeAddress,
-        value: ethers.parseEther('0.1'),
+        value: ethers.parseEther('0.05'),
       })
 
       await fundingTx.wait()
-      console.log(`✅ Funded Safe with 0.1 xDAI`)
+      console.log(`✅ Funded Safe with 0.05 xDAI`)
     } else {
       console.log(`✅ Safe already exists at ${safeAddress}`)
 
       const balance = await provider.getBalance(safeAddress)
       console.log(`Current balance: ${ethers.formatEther(balance)} xDAI`)
 
-      if (balance < ethers.parseEther('0.05')) {
-        console.log(`💰 Balance low, topping up with 0.1 xDAI...`)
+      if (balance < ethers.parseEther('0.005')) {
+        console.log(`💰 Balance low, topping up with 0.05 xDAI...`)
         const fundingTx = await relayerWallet.sendTransaction({
           to: safeAddress,
-          value: ethers.parseEther('0.1'),
+          value: ethers.parseEther('0.05'),
         })
         await fundingTx.wait()
-        console.log(`✅ Topped up Safe with 0.1 xDAI`)
+        console.log(`✅ Topped up Safe with 0.05 xDAI`)
       }
     }
 
@@ -128,4 +130,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

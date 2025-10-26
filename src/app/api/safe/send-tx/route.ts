@@ -75,7 +75,6 @@ async function processTransactionSync(params: TransactionParams) {
     console.log(`   Chain: ${chainId}`)
 
     const w3pk = createWeb3Passkey({
-      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
       debug: process.env.NODE_ENV === 'development',
     })
 
@@ -287,7 +286,6 @@ async function processTransaction(params: TransactionParams) {
     console.log(`   Signature provided: ${signature ? 'Yes' : 'No'}`)
 
     const w3pk = createWeb3Passkey({
-      apiBaseUrl: process.env.NEXT_PUBLIC_WEBAUTHN_API_URL || 'https://webauthn.w3hc.org',
       debug: process.env.NODE_ENV === 'development',
     })
 

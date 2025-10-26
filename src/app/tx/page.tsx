@@ -274,6 +274,10 @@ export default function PaymentPage() {
       // Derive the session key wallet to sign the transaction
       const sessionKeyWallet = await deriveWallet(sessionKey.sessionKeyIndex)
 
+      if (!sessionKeyWallet.privateKey) {
+        throw new Error('Session key private key not available')
+      }
+
       // Sign with the session key's private key
       const message = JSON.stringify(txData)
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
@@ -281,6 +285,10 @@ export default function PaymentPage() {
 
       // Get derived wallet for userAddress and signing
       const wallet0 = await deriveWallet(0)
+
+      if (!wallet0.privateKey) {
+        throw new Error('Owner wallet private key not available')
+      }
 
       // Try WebSocket mode first, fall back to sync mode
       const response = await fetch('/api/safe/send-tx', {

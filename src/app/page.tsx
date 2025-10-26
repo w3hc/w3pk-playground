@@ -87,7 +87,7 @@ export default function Home() {
                   </Text>
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
-                <Text color="#ffffff" mb={1}>
+                <Text color="#ffffff" mb={2}>
                   <Text as="span" color="#ffffff">
                     const
                   </Text>{' '}
@@ -101,25 +101,8 @@ export default function Home() {
                     createWeb3Passkey
                   </Text>
                   <Text as="span" color="#ffffff">
-                    ({'{'}
+                    ()
                   </Text>
-                </Text>
-                <Text color="#ffffff" ml={4} mb={1}>
-                  <Text as="span" color="#ffffff">
-                    apiBaseUrl
-                  </Text>
-                  <Text as="span" color="#ffffff">
-                    :{' '}
-                  </Text>
-                  <Text as="span" color="#8c1c84">
-                    &apos;https://webauthn.w3hc.org&apos;
-                  </Text>
-                  <Text as="span" color="#ffffff">
-                    ,
-                  </Text>
-                </Text>
-                <Text color="#ffffff" mb={2}>
-                  {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
@@ -575,7 +558,7 @@ export default function Home() {
                   </Text>
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
-                <Text color="#ffffff" mb={1}>
+                <Text color="#ffffff" mb={2}>
                   <Text as="span" color="#ffffff">
                     const
                   </Text>{' '}
@@ -589,25 +572,8 @@ export default function Home() {
                     createWeb3Passkey
                   </Text>
                   <Text as="span" color="#ffffff">
-                    ({'{'}
+                    ()
                   </Text>
-                </Text>
-                <Text color="#ffffff" ml={4} mb={1}>
-                  <Text as="span" color="#ffffff">
-                    apiBaseUrl
-                  </Text>
-                  <Text as="span" color="#ffffff">
-                    :{' '}
-                  </Text>
-                  <Text as="span" color="#8c1c84">
-                    &apos;https://webauthn.w3hc.org&apos;
-                  </Text>
-                  <Text as="span" color="#ffffff">
-                    ,
-                  </Text>
-                </Text>
-                <Text color="#ffffff" mb={2}>
-                  {'}'})
                 </Text>
                 <Text mb={2}>&nbsp;</Text>
                 <Text color="#6b7280" mb={1}>
