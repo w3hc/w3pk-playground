@@ -399,7 +399,7 @@ export default function PaymentPage() {
 
             // Clear form and reload balance and transactions (wait for Blockscout indexing)
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
-            setAmount('0.001')
+            setAmount('1')
             setTimeout(() => {
               loadBalance()
               refetchTransactions().then(() => {
@@ -462,7 +462,7 @@ export default function PaymentPage() {
 
         // Clear form and reload balance and transactions
         setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
-        setAmount('0.001')
+        setAmount('1')
         setTimeout(() => {
           loadBalance()
           refetchTransactions()
