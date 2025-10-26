@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     console.log(`📦 Deploying Safe for ${userAddress} on chain ${chainId}`)
 
     // Get chain RPC
-    const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+    const rpcUrl = 'https://rpc.chiadochain.net'!
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY!, provider)
 
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     // For now, we'll return the Safe address and module enablement will be done
     // when user creates their first session key (they'll sign the enableModule tx)
     console.log(`📝 Session Keys Module must be enabled by user when creating first session key`)
-    console.log(`   Module address: ${process.env.SESSION_KEYS_MODULE_ADDRESS}`)
+    console.log(`   Module address: 0x00000000008bDABA73cD9815d79069c247Eb4bDA`)
 
     return NextResponse.json({
       success: true,
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       txHash,
       deploymentBlockNumber,
       alreadyDeployed: isSafeDeployed,
-      moduleAddress: process.env.SESSION_KEYS_MODULE_ADDRESS,
+      moduleAddress: '0x00000000008bDABA73cD9815d79069c247Eb4bDA',
       message: isSafeDeployed
         ? 'Safe already deployed and ready to use.'
         : 'Safe deployed and funded successfully.',

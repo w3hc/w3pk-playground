@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     console.log(`   User signature received: ${signature ? 'Yes' : 'No'}`)
 
     // Get RPC provider
-    const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+    const rpcUrl = 'https://rpc.chiadochain.net'!
 
     // Check if we have the user's private key (needed for signing as owner)
     if (!userPrivateKey) {

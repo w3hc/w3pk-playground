@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Get RPC URL for the chain
     let rpcUrl: string
     if (chainId === '10200') {
-      rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+      rpcUrl = 'https://rpc.chiadochain.net'!
     } else {
       return NextResponse.json({ error: 'Unsupported chain ID' }, { status: 400 })
     }

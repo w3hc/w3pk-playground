@@ -83,7 +83,7 @@ async function processTransactionSync(params: TransactionParams) {
 
     // RPC URLs for different chains
     const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
+      10200: 'https://rpc.chiadochain.net',
       11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
       84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
     }
@@ -308,7 +308,7 @@ async function processTransaction(params: TransactionParams) {
 
     // RPC URLs for different chains
     const rpcUrls: Record<number, string> = {
-      10200: process.env.GNOSIS_CHIADO_RPC || 'https://rpc.chiadochain.net',
+      10200: 'https://rpc.chiadochain.net',
       11155111: process.env.ETHEREUM_SEPOLIA_RPC || 'https://rpc.sepolia.org',
       84532: process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
     }

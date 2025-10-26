@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     console.log(`   Derived index: ${sessionKeyIndex || 'not specified'}`)
 
     // Get RPC provider
-    const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+    const rpcUrl = 'https://rpc.chiadochain.net'!
 
     // Set expiry to 24 hours from now
     const now = Math.floor(Date.now() / 1000)

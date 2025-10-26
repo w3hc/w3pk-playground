@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     console.log(`👥 Adding relayer as owner to Safe ${safeAddress}`)
 
     // Get chain RPC
-    const rpcUrl = process.env.GNOSIS_CHIADO_RPC!
+    const rpcUrl = 'https://rpc.chiadochain.net'!
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY!, provider)
     const userWallet = new ethers.Wallet(userPrivateKey, provider)
