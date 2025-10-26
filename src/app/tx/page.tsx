@@ -62,7 +62,7 @@ export default function PaymentPage() {
 
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
-  const [amount, setAmount] = useState('0.001')
+  const [amount, setAmount] = useState('1')
 
   // Check if session key is expired
   const isSessionKeyExpired = sessionKey
@@ -158,71 +158,82 @@ export default function PaymentPage() {
       if (update.isIncoming) {
         const amountEth = ethers.formatEther(update.amount || '0')
 
-        if (update.status === 'verified') {
-          toast({
-            title: '✅ Paid!',
-            description: `You received ${amountEth} xDAI from ${update.from?.slice(0, 10)}...`,
-            status: 'success',
-            duration: 5000,
-            // containerStyle: {
-            //   bg: 'blue.500',
-            // },
-          })
+        // Check if this is a self-send (sender is also the Safe address)
+        const isSelfSend = update.from?.toLowerCase() === safeAddress.toLowerCase()
 
-          // Create a transaction history item with 'verified' status for the receiver
-          const newIncomingTransaction: Transaction = {
-            txId: `incoming-${Date.now()}`, // Temporary ID until we get the real tx hash
-            txHash: update.txHash || undefined,
-            from: update.from || '',
-            to: safeAddress,
-            amount: update.amount || '0',
-            timestamp: Date.now(),
-            status: 'verified',
-            direction: 'incoming',
-            duration: update.duration,
+        if (update.status === 'verified') {
+          // Skip adding to pending if it's a self-send (already added by outgoing WebSocket)
+          if (!isSelfSend) {
+            toast({
+              title: '✅ Paid!',
+              description: `You received ${amountEth} EUR from ${update.from?.slice(0, 10)}...`,
+              status: 'success',
+              duration: 5000,
+              // containerStyle: {
+              //   bg: 'blue.500',
+              // },
+            })
+
+            // Create a transaction history item with 'verified' status for the receiver
+            const newIncomingTransaction: Transaction = {
+              txId: `incoming-${Date.now()}`, // Temporary ID until we get the real tx hash
+              txHash: update.txHash || undefined,
+              from: update.from || '',
+              to: safeAddress,
+              amount: update.amount || '0',
+              timestamp: Date.now(),
+              status: 'verified',
+              direction: 'incoming',
+              duration: update.duration,
+            }
+
+            setPendingTransactions(prev => [newIncomingTransaction, ...prev])
           }
 
-          setPendingTransactions(prev => [newIncomingTransaction, ...prev])
-
-          // Start showing refetch loader
-          setIsRefetchingAfterConfirmation(true)
+          // Start showing refetch loader (only for non-self-sends, as self-sends are handled by outgoing)
+          if (!isSelfSend) {
+            setIsRefetchingAfterConfirmation(true)
+          }
         } else if (update.status === 'confirmed') {
-          // toast({
-          //   title: '✅ Settled!',
-          //   description: `${amountEth} xDAI payment settled onchain in ${update.duration?.toFixed(2)}s`,
-          //   status: 'info',
-          //   duration: 8000,
-          //   // containerStyle: {
-          //   //   bg: 'green.500',
-          //   // },
-          // })
+          // Skip processing if it's a self-send (already handled by outgoing WebSocket)
+          if (!isSelfSend) {
+            // toast({
+            //   title: '✅ Settled!',
+            //   description: `${amountEth} EUR payment settled onchain in ${update.duration?.toFixed(2)}s`,
+            //   status: 'info',
+            //   duration: 8000,
+            //   // containerStyle: {
+            //   //   bg: 'green.500',
+            //   // },
+            // })
 
-          // Update the pending transaction to 'confirmed' status
-          setPendingTransactions(prev =>
-            prev.map(tx =>
-              tx.direction === 'incoming' && tx.status === 'verified'
-                ? {
-                    ...tx,
-                    status: 'confirmed',
-                    txHash: update.txHash || tx.txHash,
-                    duration: update.duration,
-                  }
-                : tx
-            )
-          )
-
-          // Reload transactions after receiving payment (wait for Blockscout indexing)
-          setTimeout(() => {
-            refetchTransactions().then(() => {
-              // Stop showing refetch loader after refetch completes
-              setIsRefetchingAfterConfirmation(false)
-              // Remove the pending incoming transaction once it's fetched from blockchain
-              setPendingTransactions(prev =>
-                prev.filter(tx => !(tx.direction === 'incoming' && tx.status === 'confirmed'))
+            // Update the pending transaction to 'confirmed' status
+            setPendingTransactions(prev =>
+              prev.map(tx =>
+                tx.direction === 'incoming' && tx.status === 'verified'
+                  ? {
+                      ...tx,
+                      status: 'confirmed',
+                      txHash: update.txHash || tx.txHash,
+                      duration: update.duration,
+                    }
+                  : tx
               )
-            })
-            loadBalance()
-          }, 5000) // Wait 5 seconds for Blockscout to index
+            )
+
+            // Reload transactions after receiving payment (wait for Blockscout indexing)
+            setTimeout(() => {
+              refetchTransactions().then(() => {
+                // Stop showing refetch loader after refetch completes
+                setIsRefetchingAfterConfirmation(false)
+                // Remove the pending incoming transaction once it's fetched from blockchain
+                setPendingTransactions(prev =>
+                  prev.filter(tx => !(tx.direction === 'incoming' && tx.status === 'confirmed'))
+                )
+              })
+              loadBalance()
+            }, 5000) // Wait 5 seconds for Blockscout to index
+          }
         }
       }
     }
@@ -268,7 +279,10 @@ export default function PaymentPage() {
       // Encode ERC-20 transfer function call
       const erc20Interface = new ethers.Interface(ERC20_ABI)
       const transferAmount = ethers.parseEther(amount).toString()
-      const transferData = erc20Interface.encodeFunctionData('transfer', [recipient, transferAmount])
+      const transferData = erc20Interface.encodeFunctionData('transfer', [
+        recipient,
+        transferAmount,
+      ])
 
       // Prepare transaction data (must match backend format for signature verification)
       const txData = {
@@ -512,14 +526,14 @@ export default function PaymentPage() {
           <Heading as="h1" size="xl" mb={2}>
             Payment
           </Heading>
-          <Text color="gray.400">Send and receive xDAI</Text>
+          <Text color="gray.400">Send and receive EUR</Text>
         </Box>
 
         {/* Send Block */}
         <Card bg="gray.800" borderColor="gray.700">
           <CardHeader>
             <HStack justify="space-between">
-              <Heading size="md">Send xDAI</Heading>
+              <Heading size="md">Send EUR</Heading>
               <HStack>
                 <Text fontSize="sm" color="gray.400">
                   Balance:
@@ -529,7 +543,7 @@ export default function PaymentPage() {
                 ) : (
                   <HStack spacing={1}>
                     <Text fontFamily="mono" fontWeight="bold">
-                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(6)}
+                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
                     </Text>
                     <IconButton
                       aria-label="Refresh balance"
@@ -596,7 +610,7 @@ export default function PaymentPage() {
               </FormControl>
 
               <FormControl>
-                <FormLabel>Amount (xDAI)</FormLabel>
+                <FormLabel>Amount (EUR)</FormLabel>
                 <Input
                   type="number"
                   step="0.001"
@@ -629,12 +643,12 @@ export default function PaymentPage() {
         {/* Receive Block */}
         <Card bg="gray.800" borderColor="gray.700">
           <CardHeader>
-            <Heading size="md">Receive xDAI</Heading>
+            <Heading size="md">Receive EUR</Heading>
           </CardHeader>
           <CardBody>
             <VStack spacing={4} align="stretch">
               <Text color="gray.400" fontSize="sm">
-                Send xDAI to your Safe wallet address:
+                Send EUR to your Safe wallet address:
               </Text>
 
               {/* QR Code */}
