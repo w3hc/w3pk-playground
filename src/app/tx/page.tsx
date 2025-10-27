@@ -59,7 +59,9 @@ export default function PaymentPage() {
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([])
-
+  const [expectedBalanceAfterConfirmation, setExpectedBalanceAfterConfirmation] = useState<
+    string | null
+  >(null)
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
@@ -109,6 +111,15 @@ export default function PaymentPage() {
     deploymentBlockNumber: deploymentBlock,
     enabled: !!safeAddress && !!userAddress,
   })
+
+  const updateBalanceOptimistically = useCallback((deltaWei: string) => {
+    setSafeBalance(prev => {
+      const prevBN = ethers.getBigInt(prev || '0')
+      const deltaBN = ethers.getBigInt(deltaWei)
+      const newBalance = prevBN + deltaBN
+      return newBalance.toString()
+    })
+  }, [])
 
   // Load Safe balance
   const loadBalance = useCallback(async () => {
@@ -173,6 +184,10 @@ export default function PaymentPage() {
               //   bg: 'blue.500',
               // },
             })
+
+            // Optimistically increase balance
+            const incomingAmount = update.amount || '0'
+            updateBalanceOptimistically(incomingAmount)
 
             // Create a transaction history item with 'verified' status for the receiver
             const newIncomingTransaction: Transaction = {
@@ -350,6 +365,10 @@ export default function PaymentPage() {
               //   bg: 'green.500',
               // },
             })
+
+            // Optimistically reduce balance
+            const transferAmount = ethers.parseEther(amount).toString()
+            updateBalanceOptimistically(`-${transferAmount}`)
 
             // Create a transaction history item with 'verified' status
             const newTransaction: Transaction = {
