@@ -90,13 +90,13 @@ export async function POST(request: NextRequest) {
       // await fundingTx.wait()
       // console.log(`✅ Funded Safe with 0.05 xDAI`)
 
-      // Mint 10 EUR to the newly deployed Safe
-      console.log(`💶 Minting 10 EUR to Safe...`)
+      // Mint 42 EUR to the newly deployed Safe
+      console.log(`💶 Minting 42 EUR to Safe...`)
       const euroContract = new ethers.Contract(EURO_TOKEN_ADDRESS, ERC20_ABI, relayerWallet)
-      const mintAmount = ethers.parseUnits('10', 18) // 10 EUR with 18 decimals
+      const mintAmount = ethers.parseUnits('42', 18) // 42 EUR with 18 decimals
       const mintTx = await euroContract.mint(safeAddress, mintAmount)
       await mintTx.wait()
-      console.log(`✅ Minted 10 EUR to Safe`)
+      console.log(`✅ Minted 42 EUR to Safe`)
     } else {
       console.log(`✅ Safe already exists at ${safeAddress}`)
 
