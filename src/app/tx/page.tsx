@@ -355,8 +355,8 @@ export default function PaymentPage() {
             const newTransaction: Transaction = {
               txId: data.txId,
               txHash: update.txHash || undefined,
-              from: safeAddress,
-              to: recipient,
+              from: ethers.getAddress(safeAddress),
+              to: ethers.getAddress(recipient),
               amount: transferAmount,
               timestamp: Date.now(),
               status: 'verified',
