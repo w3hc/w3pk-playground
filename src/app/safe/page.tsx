@@ -350,12 +350,12 @@ export default function SafePage() {
           })
         )
 
-        toast({
-          title: 'Session Key Created!',
-          description: 'You can now send gasless transactions',
-          status: 'success',
-          duration: 1000,
-        })
+        // toast({
+        //   title: 'Session Key Created!',
+        //   description: 'You can now send gasless transactions',
+        //   status: 'success',
+        //   duration: 1000,
+        // })
       } else {
         throw new Error(sessionData.error || 'Failed to create session key')
       }
