@@ -59,9 +59,7 @@ export default function PaymentPage() {
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([])
-  const [expectedBalanceAfterConfirmation, setExpectedBalanceAfterConfirmation] = useState<
-    string | null
-  >(null)
+
   // Send form
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
@@ -188,7 +186,6 @@ export default function PaymentPage() {
             // Optimistically increase balance
             const incomingAmount = update.amount || '0'
             updateBalanceOptimistically(incomingAmount)
-
             // Create a transaction history item with 'verified' status for the receiver
             const newIncomingTransaction: Transaction = {
               txId: `incoming-${Date.now()}`, // Temporary ID until we get the real tx hash
@@ -558,7 +555,17 @@ export default function PaymentPage() {
                   Balance:
                 </Text>
                 {isLoadingBalance ? (
-                  <Spinner size="sm" />
+                  <HStack spacing={1}>
+                    <Text fontFamily="mono" fontWeight="bold">
+                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
+                    </Text>
+                    <IconButton
+                      aria-label="Refresh balance"
+                      icon={<FiRefreshCw />}
+                      size="xs"
+                      variant="ghost"
+                    />
+                  </HStack>
                 ) : (
                   <HStack spacing={1}>
                     <Text fontFamily="mono" fontWeight="bold">
