@@ -61,8 +61,8 @@ export default function PaymentPage() {
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([])
-
-  // Send form
+  const [insufficientBalance, setInsufficientBalance] = useState(false)
+  const insufficientBalanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
 
@@ -104,6 +104,14 @@ export default function PaymentPage() {
       })()
     }
   }, [isAuthenticated, user, deriveWallet])
+
+  useEffect(() => {
+    return () => {
+      if (insufficientBalanceTimeoutRef.current) {
+        clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Load transaction history from blockchain
   const {
@@ -305,6 +313,23 @@ export default function PaymentPage() {
         status: 'error',
         duration: 5000,
       })
+      return
+    }
+
+    const transferAmount = ethers.parseEther(amount)
+    const balanceBN = ethers.getBigInt(safeBalance || '0')
+    if (transferAmount > balanceBN) {
+      setInsufficientBalance(true)
+
+      if (insufficientBalanceTimeoutRef.current) {
+        clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+
+      insufficientBalanceTimeoutRef.current = setTimeout(() => {
+        setInsufficientBalance(false)
+        insufficientBalanceTimeoutRef.current = null
+      }, 5000)
+
       return
     }
 
@@ -694,9 +719,11 @@ export default function PaymentPage() {
                 Send
               </Button>
 
-              <Text fontSize="sm" color="gray.500" textAlign="center">
-                No gas fees • Powered by session keys
-              </Text>
+              {insufficientBalance && (
+                <Text fontSize="2xs" color="red">
+                  Insufficient balance
+                </Text>
+              )}
             </VStack>
           </CardBody>
         </Card>
