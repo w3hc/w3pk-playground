@@ -16,6 +16,30 @@ import {
   generateStealthAddress as generateStealthAddressFromMetaAddress,
 } from 'w3pk'
 
+interface SecurityScore {
+  total: number // 0-100
+  level: string // e.g., "vulnerable", "protected"
+  nextMilestone?: string // e.g., "Create encrypted backup to reach \"protected\" (40+ pts)"
+  breakdown?: Record<string, number> // e.g., { encryptedBackup: 0, passkeyActive: 20, ... }
+  // Add other potential fields if the SDK returns more details
+}
+
+interface BackupStatus {
+  securityScore: SecurityScore
+  passkeySync?: {
+    // Add other fields as needed
+    enabled: boolean
+    deviceCount: number
+    // ...
+  }
+  recoveryPhrase?: {
+    verified: boolean
+    // ...
+  }
+  // Add other potential fields reported by getBackupStatus
+  // e.g., backupExists?: boolean;
+}
+
 interface W3pkUser {
   id: string
   username: string
@@ -48,6 +72,8 @@ interface W3pkType {
     viewTag: string
   } | null>
   getStealthKeys: () => Promise<StealthKeys | null>
+  getBackupStatus: () => Promise<BackupStatus>
+  createZipBackup: (password: string) => Promise<Blob>
 }
 
 const W3PK = createContext<W3pkType>({
@@ -62,6 +88,12 @@ const W3PK = createContext<W3pkType>({
   generateStealthAddress: async () => null,
   generateStealthAddressFor: async (_recipientMetaAddress: string) => null,
   getStealthKeys: async () => null,
+  getBackupStatus: async (): Promise<BackupStatus> => {
+    throw new Error('getBackupStatus not initialized')
+  },
+  createZipBackup: async (_password: string): Promise<Blob> => {
+    throw new Error('createZipBackup not initialized')
+  },
 })
 
 export const useW3PK = () => useContext(W3PK)
@@ -557,6 +589,134 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     }
   }
 
+  const getBackupStatus = async (): Promise<BackupStatus> => {
+    if (!isAuthenticated || !user) {
+      throw new Error('User not authenticated in context. Cannot check backup status.')
+    }
+
+    if (!w3pk || typeof w3pk.getBackupStatus !== 'function') {
+      throw new Error('w3pk SDK does not support getBackupStatus.')
+    }
+
+    try {
+      setIsLoading(true)
+      console.log('=== Getting Backup Status with w3pk SDK ===')
+
+      // Check if the SDK has an active session (this might be sufficient for getBackupStatus)
+      const hasSession = w3pk.hasActiveSession?.() // Check if method exists
+      console.log('Active session check (getBackupStatus):', hasSession)
+
+      let result: BackupStatus
+      try {
+        // Attempt the call directly first
+        result = await w3pk.getBackupStatus()
+      } catch (initialError) {
+        console.error('Initial getBackupStatus failed:', initialError)
+
+        // If it fails due to auth requirement, attempt to login first
+        if (
+          (initialError as Error).message?.includes('Must be authenticated') ||
+          (initialError as Error).message?.includes('login')
+        ) {
+          console.log('Authentication required, prompting for fresh login...')
+          try {
+            await w3pk.login() // Attempt fresh login (likely WebAuthn)
+            console.log('Fresh authentication successful, retrying getBackupStatus...')
+            result = await w3pk.getBackupStatus() // Retry the operation
+          } catch (retryError) {
+            console.error('Retry after authentication failed:', retryError)
+            if (!isUserCancelledError(retryError)) {
+              toast({
+                title: 'Authentication Required',
+                description: 'Please authenticate to check backup status',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              })
+            }
+            throw retryError // Re-throw the retry error
+          }
+        } else {
+          // If the initial error wasn't auth-related, re-throw it
+          throw initialError
+        }
+      }
+
+      console.log('Backup Status retrieved:', result)
+      return result
+    } catch (error) {
+      console.error('Error getting backup status:', error)
+      // Re-throw the error so the calling component can handle it (e.g., show toast)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const createZipBackup = async (password: string): Promise<Blob> => {
+    if (!isAuthenticated || !user) {
+      throw new Error('User not authenticated in context. Cannot create backup.')
+    }
+
+    if (!w3pk || typeof w3pk.createZipBackup !== 'function') {
+      throw new Error('w3pk SDK does not support createZipBackup.')
+    }
+
+    try {
+      setIsLoading(true)
+      console.log('=== Creating ZIP Backup with w3pk SDK ===')
+
+      // Check if the SDK has an active session (this might be required for createZipBackup too)
+      const hasSession = w3pk.hasActiveSession?.() // Check if method exists
+      console.log('Active session check (createZipBackup):', hasSession)
+
+      let result: Blob
+      try {
+        // Attempt the call directly first, passing the password
+        result = await w3pk.createZipBackup(password)
+      } catch (initialError) {
+        console.error('Initial createZipBackup failed:', initialError)
+
+        // If it fails due to auth requirement, attempt to login first
+        if (
+          (initialError as Error).message?.includes('Must be authenticated') ||
+          (initialError as Error).message?.includes('login')
+        ) {
+          console.log('Authentication required, prompting for fresh login...')
+          try {
+            await w3pk.login() // Attempt fresh login (likely WebAuthn)
+            console.log('Fresh authentication successful, retrying createZipBackup...')
+            result = await w3pk.createZipBackup(password) // Retry the operation with password
+          } catch (retryError) {
+            console.error('Retry after authentication failed:', retryError)
+            if (!isUserCancelledError(retryError)) {
+              toast({
+                title: 'Authentication Required',
+                description: 'Please authenticate to create backup',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              })
+            }
+            throw retryError // Re-throw the retry error
+          }
+        } else {
+          // If the initial error wasn't auth-related, re-throw it
+          throw initialError
+        }
+      }
+
+      console.log('ZIP Backup blob created successfully.')
+      return result
+    } catch (error) {
+      console.error('Error creating backup:', error)
+      // Re-throw the error so the calling component can handle it
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <W3PK.Provider
       value={{
@@ -571,6 +731,8 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         generateStealthAddress,
         generateStealthAddressFor,
         getStealthKeys,
+        getBackupStatus, // Add the new method
+        createZipBackup, // Add the new method
       }}
     >
       {children}
