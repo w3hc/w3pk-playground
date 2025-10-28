@@ -26,6 +26,7 @@ import { useW3PK } from '@/context/W3PK'
 import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import { FiShield, FiKey, FiCheckCircle, FiClock, FiDollarSign } from 'react-icons/fi'
+import { useRouter } from 'next/navigation'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -44,6 +45,7 @@ type SetupStep = 'idle' | 'deploying' | 'enablingModule' | 'creatingSessionKey' 
 export default function SafePage() {
   const { isAuthenticated, user, deriveWallet, signMessage } = useW3PK()
   const toast = useToast()
+  const router = useRouter()
 
   // State
   const [safeAddress, setSafeAddress] = useState<string | null>(null)
@@ -217,7 +219,7 @@ export default function SafePage() {
         title: 'Safe Deployed!',
         description: `Your Safe is ready at ${newSafeAddress.slice(0, 10)}...`,
         status: 'success',
-        duration: 5000,
+        duration: 1000,
       })
 
       await loadBalance()
@@ -285,7 +287,7 @@ export default function SafePage() {
           title: 'Module Enabled!',
           description: 'Smart Sessions module is now enabled on your Safe',
           status: 'success',
-          duration: 5000,
+          duration: 1000,
         })
         setModuleEnableTxData(null)
 
@@ -348,12 +350,12 @@ export default function SafePage() {
           })
         )
 
-        toast({
-          title: 'Session Key Created!',
-          description: 'You can now send gasless transactions',
-          status: 'success',
-          duration: 5000,
-        })
+        // toast({
+        //   title: 'Session Key Created!',
+        //   description: 'You can now send gasless transactions',
+        //   status: 'success',
+        //   duration: 1000,
+        // })
       } else {
         throw new Error(sessionData.error || 'Failed to create session key')
       }
@@ -364,6 +366,7 @@ export default function SafePage() {
         status: 'success',
         duration: 5000,
       })
+      router.push('/tx')
     } catch (error: any) {
       console.error('Combined setup failed:', error)
       setCurrentSetupStep('error')
@@ -473,7 +476,7 @@ export default function SafePage() {
                   isLoading={currentSetupStep !== 'idle' && currentSetupStep !== 'error'}
                   loadingText={
                     currentSetupStep === 'deploying'
-                      ? 'Deploying your Safe onchain wallet...'
+                      ? 'Deploying...'
                       : currentSetupStep === 'enablingModule'
                         ? 'Enabling session module...'
                         : currentSetupStep === 'creatingSessionKey'
@@ -767,7 +770,7 @@ export default function SafePage() {
 
         {/* Faucet Button - Moved into its own box */}
         {safeAddress && currentSetupStep === 'idle' && (
-          <Box textAlign="center" pt={4}>
+          <Box mt={500} mb={50} mr={30} textAlign="right" pt={4}>
             <Button
               size="sm"
               colorScheme="red"
