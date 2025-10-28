@@ -24,7 +24,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react' // Add useRef to imports
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
@@ -55,6 +55,8 @@ export default function PaymentPage() {
   const [sessionKey, setSessionKey] = useState<SessionKey | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isCooldown, setIsCooldown] = useState(false)
+  const cooldownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
@@ -68,6 +70,15 @@ export default function PaymentPage() {
   const isSessionKeyExpired = sessionKey
     ? Date.now() > sessionKey.permissions.validUntil * 1000
     : false
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownTimeoutRef.current) {
+        clearTimeout(cooldownTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Load saved Safe data from localStorage
   useEffect(() => {
@@ -265,6 +276,18 @@ export default function PaymentPage() {
   }, [safeAddress, user, toast, loadBalance, refetchTransactions])
 
   const sendTransaction = async () => {
+    if (isCooldown) {
+      toast({
+        title: 'Please wait',
+        description:
+          'A transaction is already being processed or recently sent. Please wait before sending another.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      })
+      return
+    }
+
     if (!safeAddress || !sessionKey || !recipient || !amount) {
       toast({
         title: 'Error',
@@ -286,6 +309,16 @@ export default function PaymentPage() {
     }
 
     setIsSending(true)
+    setIsCooldown(true)
+
+    if (cooldownTimeoutRef.current) {
+      clearTimeout(cooldownTimeoutRef.current)
+    }
+
+    cooldownTimeoutRef.current = setTimeout(() => {
+      setIsCooldown(false)
+      cooldownTimeoutRef.current = null
+    }, 3000)
 
     try {
       // Encode ERC-20 transfer function call
@@ -631,7 +664,7 @@ export default function PaymentPage() {
                   value={recipient}
                   onChange={e => setRecipient(e.target.value)}
                   fontFamily="mono"
-                  isDisabled={!sessionKey || isSessionKeyExpired}
+                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
                 />
               </FormControl>
 
@@ -643,7 +676,7 @@ export default function PaymentPage() {
                   placeholder="0.01"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  isDisabled={!sessionKey || isSessionKeyExpired}
+                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
                 />
               </FormControl>
 
@@ -651,10 +684,12 @@ export default function PaymentPage() {
                 colorScheme="purple"
                 size="lg"
                 onClick={sendTransaction}
-                isLoading={isSending}
+                isLoading={isSending} // Keep isLoading for the spinner
                 loadingText="Sending..."
                 leftIcon={<FiSend />}
-                isDisabled={!recipient || !amount || !sessionKey || isSessionKeyExpired}
+                isDisabled={
+                  !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
+                } // Add isCooldown here
               >
                 Send
               </Button>
