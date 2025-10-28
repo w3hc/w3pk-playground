@@ -24,7 +24,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import { useState, useEffect, useCallback, useRef } from 'react' // Add useRef to imports
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
@@ -32,6 +32,13 @@ import { TransactionHistory } from '@/components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
+import {
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from '@chakra-ui/react'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -695,14 +702,25 @@ export default function PaymentPage() {
 
               <FormControl>
                 <FormLabel>Amount (EUR)</FormLabel>
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="0.01"
+                <NumberInput
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  onChange={setAmount}
+                  min={0}
+                  precision={2}
+                  step={0.001}
                   isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
-                />
+                >
+                  <NumberInputField
+                    type="text"
+                    placeholder="1"
+                    fontFamily="mono"
+                    onWheel={e => e.currentTarget.blur()}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
               </FormControl>
 
               <Button
