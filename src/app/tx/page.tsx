@@ -24,7 +24,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
@@ -32,6 +32,13 @@ import { TransactionHistory } from '@/components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
+import {
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from '@chakra-ui/react'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -55,12 +62,14 @@ export default function PaymentPage() {
   const [sessionKey, setSessionKey] = useState<SessionKey | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isCooldown, setIsCooldown] = useState(false)
+  const cooldownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [deploymentBlock, setDeploymentBlock] = useState<number | undefined>(undefined)
   const [isRefetchingAfterConfirmation, setIsRefetchingAfterConfirmation] = useState(false)
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([])
-
-  // Send form
+  const [insufficientBalance, setInsufficientBalance] = useState(false)
+  const insufficientBalanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
 
@@ -68,6 +77,15 @@ export default function PaymentPage() {
   const isSessionKeyExpired = sessionKey
     ? Date.now() > sessionKey.permissions.validUntil * 1000
     : false
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownTimeoutRef.current) {
+        clearTimeout(cooldownTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Load saved Safe data from localStorage
   useEffect(() => {
@@ -94,6 +112,14 @@ export default function PaymentPage() {
     }
   }, [isAuthenticated, user, deriveWallet])
 
+  useEffect(() => {
+    return () => {
+      if (insufficientBalanceTimeoutRef.current) {
+        clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+    }
+  }, [])
+
   // Load transaction history from blockchain
   const {
     transactions,
@@ -109,6 +135,15 @@ export default function PaymentPage() {
     deploymentBlockNumber: deploymentBlock,
     enabled: !!safeAddress && !!userAddress,
   })
+
+  const updateBalanceOptimistically = useCallback((deltaWei: string) => {
+    setSafeBalance(prev => {
+      const prevBN = ethers.getBigInt(prev || '0')
+      const deltaBN = ethers.getBigInt(deltaWei)
+      const newBalance = prevBN + deltaBN
+      return newBalance.toString()
+    })
+  }, [])
 
   // Load Safe balance
   const loadBalance = useCallback(async () => {
@@ -174,6 +209,9 @@ export default function PaymentPage() {
               // },
             })
 
+            // Optimistically increase balance
+            const incomingAmount = update.amount || '0'
+            updateBalanceOptimistically(incomingAmount)
             // Create a transaction history item with 'verified' status for the receiver
             const newIncomingTransaction: Transaction = {
               txId: `incoming-${Date.now()}`, // Temporary ID until we get the real tx hash
@@ -253,6 +291,18 @@ export default function PaymentPage() {
   }, [safeAddress, user, toast, loadBalance, refetchTransactions])
 
   const sendTransaction = async () => {
+    if (isCooldown) {
+      toast({
+        title: 'Please wait',
+        description:
+          'A transaction is already being processed or recently sent. Please wait before sending another.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      })
+      return
+    }
+
     if (!safeAddress || !sessionKey || !recipient || !amount) {
       toast({
         title: 'Error',
@@ -273,7 +323,34 @@ export default function PaymentPage() {
       return
     }
 
+    const transferAmount = ethers.parseEther(amount)
+    const balanceBN = ethers.getBigInt(safeBalance || '0')
+    if (transferAmount > balanceBN) {
+      setInsufficientBalance(true)
+
+      if (insufficientBalanceTimeoutRef.current) {
+        clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+
+      insufficientBalanceTimeoutRef.current = setTimeout(() => {
+        setInsufficientBalance(false)
+        insufficientBalanceTimeoutRef.current = null
+      }, 5000)
+
+      return
+    }
+
     setIsSending(true)
+    setIsCooldown(true)
+
+    if (cooldownTimeoutRef.current) {
+      clearTimeout(cooldownTimeoutRef.current)
+    }
+
+    cooldownTimeoutRef.current = setTimeout(() => {
+      setIsCooldown(false)
+      cooldownTimeoutRef.current = null
+    }, 3000)
 
     try {
       // Encode ERC-20 transfer function call
@@ -351,12 +428,16 @@ export default function PaymentPage() {
               // },
             })
 
+            // Optimistically reduce balance
+            const transferAmount = ethers.parseEther(amount).toString()
+            updateBalanceOptimistically(`-${transferAmount}`)
+
             // Create a transaction history item with 'verified' status
             const newTransaction: Transaction = {
               txId: data.txId,
               txHash: update.txHash || undefined,
-              from: safeAddress,
-              to: recipient,
+              from: ethers.getAddress(safeAddress),
+              to: ethers.getAddress(recipient),
               amount: transferAmount,
               timestamp: Date.now(),
               status: 'verified',
@@ -539,7 +620,17 @@ export default function PaymentPage() {
                   Balance:
                 </Text>
                 {isLoadingBalance ? (
-                  <Spinner size="sm" />
+                  <HStack spacing={1}>
+                    <Text fontFamily="mono" fontWeight="bold">
+                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
+                    </Text>
+                    <IconButton
+                      aria-label="Refresh balance"
+                      icon={<FiRefreshCw />}
+                      size="xs"
+                      variant="ghost"
+                    />
+                  </HStack>
                 ) : (
                   <HStack spacing={1}>
                     <Text fontFamily="mono" fontWeight="bold">
@@ -605,37 +696,52 @@ export default function PaymentPage() {
                   value={recipient}
                   onChange={e => setRecipient(e.target.value)}
                   fontFamily="mono"
-                  isDisabled={!sessionKey || isSessionKeyExpired}
+                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
                 />
               </FormControl>
 
               <FormControl>
                 <FormLabel>Amount (EUR)</FormLabel>
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="0.01"
+                <NumberInput
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  isDisabled={!sessionKey || isSessionKeyExpired}
-                />
+                  onChange={setAmount}
+                  min={0}
+                  precision={2}
+                  step={0.001}
+                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                >
+                  <NumberInputField
+                    type="text"
+                    placeholder="1"
+                    fontFamily="mono"
+                    onWheel={e => e.currentTarget.blur()}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
               </FormControl>
 
               <Button
                 colorScheme="purple"
                 size="lg"
                 onClick={sendTransaction}
-                isLoading={isSending}
+                isLoading={isSending} // Keep isLoading for the spinner
                 loadingText="Sending..."
                 leftIcon={<FiSend />}
-                isDisabled={!recipient || !amount || !sessionKey || isSessionKeyExpired}
+                isDisabled={
+                  !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
+                } // Add isCooldown here
               >
                 Send
               </Button>
 
-              <Text fontSize="sm" color="gray.500" textAlign="center">
-                No gas fees • Powered by session keys
-              </Text>
+              {insufficientBalance && (
+                <Text fontSize="2xs" color="red">
+                  Insufficient balance
+                </Text>
+              )}
             </VStack>
           </CardBody>
         </Card>
