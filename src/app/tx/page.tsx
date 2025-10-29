@@ -307,6 +307,36 @@ export default function PaymentPage() {
     }
   }, [safeAddress, user, toast, loadBalance, refetchTransactions])
 
+  const getTxBaseUrl = () => {
+    if (typeof window === 'undefined') return 'https://w3pk.w3hc.org/tx/'
+
+    // Check if we're in development (localhost)
+    if (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.port === '3000'
+    ) {
+      return 'http://localhost:3000/tx/'
+    }
+
+    // Otherwise, assume production
+    return 'https://w3pk.w3hc.org/tx/'
+  }
+
+  const generatePaymentRequestUrl = (
+    recipient: string,
+    amountInWei: string,
+    tokenAddress: string
+  ) => {
+    const baseUrl = getTxBaseUrl()
+    const params = new URLSearchParams({
+      recipient,
+      value: amountInWei,
+      token: tokenAddress,
+    })
+    return `${baseUrl}?${params.toString()}`
+  }
+
   const sendTransaction = async () => {
     if (isCooldown) {
       toast({
@@ -579,35 +609,14 @@ export default function PaymentPage() {
     }
   }
 
-  const handleRequestPayment = async () => {
-    if (!safeAddress) {
-      toast({
-        title: 'Error',
-        description: 'Safe address not available for request.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      })
-      onRequestModalClose()
-      return
-    }
-
-    if (!requestAmount || isNaN(parseFloat(requestAmount)) || parseFloat(requestAmount) <= 0) {
-      toast({
-        title: 'Invalid Amount',
-        description: 'Please enter a valid amount to request.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      })
-      return
-    }
+  const handleRequestPayment = () => {
+    if (!safeAddress || !requestAmount) return
 
     try {
       const amountInWei = ethers.parseEther(requestAmount).toString()
-      const qrString = `ethereum:${safeAddress}?value=${amountInWei}&token=${EURO_TOKEN_ADDRESS}` // Include token address for clarity
+      const paymentUrl = generatePaymentRequestUrl(safeAddress, amountInWei, EURO_TOKEN_ADDRESS)
 
-      setQrData(qrString)
+      setQrData(paymentUrl)
       setIsQRGenerated(true)
     } catch (error) {
       console.error('Error generating QR data:', error)
@@ -806,7 +815,7 @@ export default function PaymentPage() {
                 <Button
                   colorScheme="blue"
                   variant="outline"
-                  size="lg"
+                  size="sm"
                   onClick={onRequestModalOpen}
                   isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
                 >
