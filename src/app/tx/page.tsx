@@ -22,6 +22,14 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -72,6 +80,15 @@ export default function PaymentPage() {
   const insufficientBalanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
+
+  const {
+    isOpen: isRequestModalOpen,
+    onOpen: onRequestModalOpen,
+    onClose: onRequestModalClose,
+  } = useDisclosure()
+  const [requestAmount, setRequestAmount] = useState<string>('')
+  const [isQRGenerated, setIsQRGenerated] = useState<boolean>(false)
+  const [qrData, setQrData] = useState<string>('')
 
   // Check if session key is expired
   const isSessionKeyExpired = sessionKey
@@ -562,6 +579,55 @@ export default function PaymentPage() {
     }
   }
 
+  const handleRequestPayment = async () => {
+    if (!safeAddress) {
+      toast({
+        title: 'Error',
+        description: 'Safe address not available for request.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+      onRequestModalClose()
+      return
+    }
+
+    if (!requestAmount || isNaN(parseFloat(requestAmount)) || parseFloat(requestAmount) <= 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Please enter a valid amount to request.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      })
+      return
+    }
+
+    try {
+      const amountInWei = ethers.parseEther(requestAmount).toString()
+      const qrString = `ethereum:${safeAddress}?value=${amountInWei}&token=${EURO_TOKEN_ADDRESS}` // Include token address for clarity
+
+      setQrData(qrString)
+      setIsQRGenerated(true)
+    } catch (error) {
+      console.error('Error generating QR data:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to generate QR code data.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const handleRequestModalClose = () => {
+    setRequestAmount('')
+    setIsQRGenerated(false)
+    setQrData('')
+    onRequestModalClose()
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast({
@@ -723,19 +789,30 @@ export default function PaymentPage() {
                 </NumberInput>
               </FormControl>
 
-              <Button
-                colorScheme="purple"
-                size="lg"
-                onClick={sendTransaction}
-                isLoading={isSending} // Keep isLoading for the spinner
-                loadingText="Sending..."
-                leftIcon={<FiSend />}
-                isDisabled={
-                  !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
-                } // Add isCooldown here
-              >
-                Send
-              </Button>
+              <HStack spacing={4}>
+                <Button
+                  colorScheme="purple"
+                  size="lg"
+                  onClick={sendTransaction}
+                  isLoading={isSending}
+                  loadingText="Sending..."
+                  leftIcon={<FiSend />}
+                  isDisabled={
+                    !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
+                  }
+                >
+                  Send
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  variant="outline"
+                  size="lg"
+                  onClick={onRequestModalOpen}
+                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                >
+                  Request Payment
+                </Button>
+              </HStack>
 
               {insufficientBalance && (
                 <Text fontSize="2xs" color="red">
@@ -811,6 +888,71 @@ export default function PaymentPage() {
           </Button>
         </Box>
       </VStack>
+
+      <Modal isOpen={isRequestModalOpen} onClose={handleRequestModalClose}>
+        <ModalOverlay />
+        <ModalContent bg="gray.800" borderColor="gray.700" color="white">
+          <ModalHeader>Request Payment</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {!isQRGenerated ? (
+              <FormControl isRequired>
+                <FormLabel>Amount to Request (EUR)</FormLabel>
+                <NumberInput
+                  value={requestAmount}
+                  onChange={setRequestAmount}
+                  min={0}
+                  precision={2}
+                  step={0.001}
+                >
+                  <NumberInputField
+                    type="text"
+                    placeholder="0.00"
+                    fontFamily="mono"
+                    onWheel={e => e.currentTarget.blur()}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+                <FormLabel mt={2}>Token: EUR</FormLabel>
+              </FormControl>
+            ) : (
+              <VStack spacing={4} align="center">
+                <Text textAlign="center">Scan this QR code to send payment</Text>
+                {qrData ? (
+                  <Box p={4} bg="white" borderRadius="md">
+                    <QRCodeSVG value={qrData} size={200} />
+                  </Box>
+                ) : (
+                  <Text>Loading QR code...</Text>
+                )}
+                <Text textAlign="center" fontSize="sm" color="gray.400" wordBreak="break-all">
+                  {qrData}
+                </Text>
+              </VStack>
+            )}
+          </ModalBody>
+
+          <ModalFooter>
+            {!isQRGenerated ? (
+              <>
+                <Button colorScheme="blue" mr={3} onClick={handleRequestPayment}>
+                  Generate QR
+                </Button>
+                <Button variant="ghost" onClick={handleRequestModalClose}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <Button colorScheme="purple" onClick={handleRequestModalClose}>
+                Close
+              </Button>
+            )}
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Container>
   )
 }
