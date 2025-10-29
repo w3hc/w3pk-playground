@@ -13,7 +13,7 @@ import {
   HStack,
   Badge,
   useToast,
-  Spinner,
+  Tooltip,
   Card,
   CardHeader,
   CardBody,
@@ -22,6 +22,14 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { useW3PK } from '@/context/W3PK'
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -32,6 +40,8 @@ import { TransactionHistory } from '@/components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
+import { FaSatellite, FaQrcode } from 'react-icons/fa'
+
 import {
   NumberInput,
   NumberInputField,
@@ -72,6 +82,66 @@ export default function PaymentPage() {
   const insufficientBalanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
+  const [paymentRequestDetected, setPaymentRequestDetected] = useState(false)
+
+  const {
+    isOpen: isRequestModalOpen,
+    onOpen: onRequestModalOpen,
+    onClose: onRequestModalClose,
+  } = useDisclosure()
+  const [requestAmount, setRequestAmount] = useState<string>('')
+  const [isQRGenerated, setIsQRGenerated] = useState<boolean>(false)
+  const [qrData, setQrData] = useState<string>('')
+
+  const isWebNFCSupported = typeof window !== 'undefined' && 'nfc' in navigator
+
+  const writeNFC = async (url: string) => {
+    if (!isWebNFCSupported) {
+      toast({
+        title: 'NFC Not Available',
+        description: 'NFC writing is only supported on Android with Chrome.',
+        status: 'warning',
+        duration: 4000,
+      })
+      return
+    }
+
+    try {
+      // Cast to any because NDEFWriter isn't in TypeScript DOM lib yet
+      const NDEFWriter = (window as any).NDEFWriter
+      if (!NDEFWriter) {
+        throw new Error('NDEFWriter not available')
+      }
+
+      const writer = new NDEFWriter()
+      await writer.write({
+        records: [{ recordType: 'url', url }],
+      })
+
+      toast({
+        title: '✅ NFC Written!',
+        description: 'Hold the tag near your phone to pay.',
+        status: 'success',
+        duration: 3000,
+      })
+    } catch (error: any) {
+      console.error('NFC write failed:', error)
+      let message = error.message || 'Failed to write to NFC tag.'
+
+      if (message.includes('aborted')) {
+        message = 'Operation canceled.'
+      } else if (message.includes('no tag')) {
+        message = 'No NFC tag detected. Try again.'
+      }
+
+      toast({
+        title: 'NFC Write Failed',
+        description: message,
+        status: 'error',
+        duration: 5000,
+      })
+    }
+  }
 
   // Check if session key is expired
   const isSessionKeyExpired = sessionKey
@@ -89,7 +159,7 @@ export default function PaymentPage() {
 
   // Load saved Safe data from localStorage
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && user.ethereumAddress) {
       const saved = localStorage.getItem(`safe_${user.id}`)
       if (saved) {
         const data = JSON.parse(saved)
@@ -99,23 +169,54 @@ export default function PaymentPage() {
         }
       }
 
-      // Get user address and deployment block for transaction history
-      ;(async () => {
-        const wallet0 = await deriveWallet(0)
-        setUserAddress(wallet0.address)
+      // Using user.ethereumAddress directly
+      const userAddr = user.ethereumAddress
+      setUserAddress(userAddr)
 
-        const safeData = SafeStorage.getSafeData(wallet0.address, 10200)
-        if (safeData?.deploymentBlockNumber) {
-          setDeploymentBlock(safeData.deploymentBlockNumber)
-        }
-      })()
+      const safeData = SafeStorage.getSafeData(userAddr, 10200)
+      if (safeData?.deploymentBlockNumber) {
+        setDeploymentBlock(safeData.deploymentBlockNumber)
+      }
     }
-  }, [isAuthenticated, user, deriveWallet])
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     return () => {
       if (insufficientBalanceTimeoutRef.current) {
         clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const recipientParam = urlParams.get('recipient')
+    const valueParam = urlParams.get('value')
+    const tokenParam = urlParams.get('token')
+
+    if (
+      recipientParam &&
+      valueParam &&
+      tokenParam &&
+      ethers.isAddress(recipientParam) &&
+      !isNaN(Number(valueParam)) &&
+      ethers.isAddress(tokenParam) &&
+      tokenParam.toLowerCase() === EURO_TOKEN_ADDRESS.toLowerCase()
+    ) {
+      try {
+        const amountInEth = ethers.formatEther(valueParam)
+        setRecipient(recipientParam)
+        setAmount(amountInEth)
+        setPaymentRequestDetected(true)
+
+        if (window.history && window.history.replaceState) {
+          const cleanUrl = window.location.pathname
+          window.history.replaceState({}, '', cleanUrl)
+        }
+      } catch (e) {
+        console.warn('Invalid value parameter:', valueParam)
       }
     }
   }, [])
@@ -290,6 +391,36 @@ export default function PaymentPage() {
     }
   }, [safeAddress, user, toast, loadBalance, refetchTransactions])
 
+  const getTxBaseUrl = () => {
+    if (typeof window === 'undefined') return 'https://w3pk.w3hc.org/tx/'
+
+    // Check if we're in development (localhost)
+    if (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.port === '3000'
+    ) {
+      return 'http://localhost:3000/tx/'
+    }
+
+    // Otherwise, assume production
+    return 'https://w3pk.w3hc.org/tx/'
+  }
+
+  const generatePaymentRequestUrl = (
+    recipient: string,
+    amountInWei: string,
+    tokenAddress: string
+  ) => {
+    const baseUrl = getTxBaseUrl()
+    const params = new URLSearchParams({
+      recipient,
+      value: amountInWei,
+      token: tokenAddress,
+    })
+    return `${baseUrl}?${params.toString()}`
+  }
+
   const sendTransaction = async () => {
     if (isCooldown) {
       toast({
@@ -431,6 +562,9 @@ export default function PaymentPage() {
             // Optimistically reduce balance
             const transferAmount = ethers.parseEther(amount).toString()
             updateBalanceOptimistically(`-${transferAmount}`)
+            setPaymentRequestDetected(false)
+            setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+            setAmount('1')
 
             // Create a transaction history item with 'verified' status
             const newTransaction: Transaction = {
@@ -481,6 +615,7 @@ export default function PaymentPage() {
             // Clear form and reload balance and transactions (wait for Blockscout indexing)
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
             setAmount('1')
+            setPaymentRequestDetected(false)
             setTimeout(() => {
               loadBalance()
               refetchTransactions().then(() => {
@@ -559,7 +694,38 @@ export default function PaymentPage() {
         duration: 8000,
       })
       setIsSending(false)
+      setPaymentRequestDetected(false)
+      setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+      setAmount('1')
     }
+  }
+
+  const handleRequestPayment = () => {
+    if (!safeAddress || !requestAmount) return
+
+    try {
+      const amountInWei = ethers.parseEther(requestAmount).toString()
+      const paymentUrl = generatePaymentRequestUrl(safeAddress, amountInWei, EURO_TOKEN_ADDRESS)
+
+      setQrData(paymentUrl)
+      setIsQRGenerated(true)
+    } catch (error) {
+      console.error('Error generating QR data:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to generate QR code data.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const handleRequestModalClose = () => {
+    setRequestAmount('')
+    setIsQRGenerated(false)
+    setQrData('')
+    onRequestModalClose()
   }
 
   const copyToClipboard = (text: string) => {
@@ -721,21 +887,39 @@ export default function PaymentPage() {
                     <NumberDecrementStepper />
                   </NumberInputStepper>
                 </NumberInput>
+                {paymentRequestDetected && (
+                  <Text mt={3} fontSize="md" color="red">
+                    Incoming payment request detected. Would you like to proceed?
+                  </Text>
+                )}
               </FormControl>
 
-              <Button
-                colorScheme="purple"
-                size="lg"
-                onClick={sendTransaction}
-                isLoading={isSending} // Keep isLoading for the spinner
-                loadingText="Sending..."
-                leftIcon={<FiSend />}
-                isDisabled={
-                  !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
-                } // Add isCooldown here
-              >
-                Send
-              </Button>
+              <HStack spacing={4}>
+                <Button
+                  colorScheme="purple"
+                  size="lg"
+                  onClick={sendTransaction}
+                  isLoading={isSending}
+                  loadingText="Sending..."
+                  leftIcon={<FiSend />}
+                  isDisabled={
+                    !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
+                  }
+                >
+                  Send
+                </Button>
+                {!paymentRequestDetected && (
+                  <Button
+                    colorScheme="blue"
+                    variant="outline"
+                    size="sm"
+                    onClick={onRequestModalOpen}
+                    isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                  >
+                    Request Payment
+                  </Button>
+                )}
+              </HStack>
 
               {insufficientBalance && (
                 <Text fontSize="2xs" color="red">
@@ -811,6 +995,118 @@ export default function PaymentPage() {
           </Button>
         </Box>
       </VStack>
+
+      <Modal isOpen={isRequestModalOpen} onClose={handleRequestModalClose}>
+        <ModalOverlay />
+        <ModalContent bg="gray.800" borderColor="gray.700" color="white">
+          <ModalHeader>Request Payment</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {!isQRGenerated ? (
+              <FormControl isRequired>
+                <FormLabel>Amount to Request (EUR)</FormLabel>
+                <NumberInput
+                  value={requestAmount}
+                  onChange={setRequestAmount}
+                  min={0}
+                  precision={2}
+                  step={0.001}
+                >
+                  <NumberInputField
+                    type="text"
+                    placeholder="0.00"
+                    fontFamily="mono"
+                    onWheel={e => e.currentTarget.blur()}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+                <FormLabel mt={2}>Token: EUR</FormLabel>
+              </FormControl>
+            ) : (
+              <VStack spacing={4} align="center">
+                <Text textAlign="center">Scan this QR code to send payment</Text>
+                {qrData ? (
+                  <Box p={4} bg="white" borderRadius="md">
+                    <QRCodeSVG value={qrData} size={200} />
+                  </Box>
+                ) : (
+                  <Text>Loading QR code...</Text>
+                )}
+                <Text textAlign="center" fontSize="sm" color="gray.400" wordBreak="break-all">
+                  {qrData}
+                </Text>
+              </VStack>
+            )}
+          </ModalBody>
+
+          <ModalFooter>
+            {!isQRGenerated ? (
+              <>
+                <Button
+                  colorScheme="blue"
+                  mr={3}
+                  onClick={handleRequestPayment}
+                  isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                  leftIcon={<FaQrcode />}
+                >
+                  Generate QR
+                </Button>
+
+                {isWebNFCSupported ? (
+                  <Button
+                    colorScheme="green"
+                    mr={3}
+                    leftIcon={<FaSatellite />}
+                    onClick={() => {
+                      if (!safeAddress || !requestAmount) return
+                      try {
+                        const amountInWei = ethers.parseEther(requestAmount).toString()
+                        const paymentUrl = generatePaymentRequestUrl(
+                          safeAddress,
+                          amountInWei,
+                          EURO_TOKEN_ADDRESS
+                        )
+                        writeNFC(paymentUrl)
+                      } catch (err) {
+                        toast({
+                          title: 'Invalid Amount',
+                          description: 'Please enter a valid EUR amount.',
+                          status: 'error',
+                          duration: 3000,
+                        })
+                      }
+                    }}
+                    isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                  >
+                    Write to NFC
+                  </Button>
+                ) : (
+                  <Tooltip
+                    label="NFC writing is only available on Android (Chrome)"
+                    fontSize="sm"
+                    hasArrow
+                  >
+                    <Button isDisabled colorScheme="gray">
+                      NFC Not Available
+                    </Button>
+                  </Tooltip>
+                )}
+
+                <Button variant="ghost" onClick={handleRequestModalClose}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <Button colorScheme="purple" onClick={handleRequestModalClose}>
+                Close
+              </Button>
+            )}
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Container>
   )
 }
