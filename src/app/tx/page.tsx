@@ -13,7 +13,7 @@ import {
   HStack,
   Badge,
   useToast,
-  Spinner,
+  Tooltip,
   Card,
   CardHeader,
   CardBody,
@@ -40,6 +40,8 @@ import { TransactionHistory } from '@/components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
+import { FaSatellite, FaQrcode } from 'react-icons/fa'
+
 import {
   NumberInput,
   NumberInputField,
@@ -90,6 +92,56 @@ export default function PaymentPage() {
   const [requestAmount, setRequestAmount] = useState<string>('')
   const [isQRGenerated, setIsQRGenerated] = useState<boolean>(false)
   const [qrData, setQrData] = useState<string>('')
+
+  const isWebNFCSupported = typeof window !== 'undefined' && 'nfc' in navigator
+
+  const writeNFC = async (url: string) => {
+    if (!isWebNFCSupported) {
+      toast({
+        title: 'NFC Not Available',
+        description: 'NFC writing is only supported on Android with Chrome.',
+        status: 'warning',
+        duration: 4000,
+      })
+      return
+    }
+
+    try {
+      // Cast to any because NDEFWriter isn't in TypeScript DOM lib yet
+      const NDEFWriter = (window as any).NDEFWriter
+      if (!NDEFWriter) {
+        throw new Error('NDEFWriter not available')
+      }
+
+      const writer = new NDEFWriter()
+      await writer.write({
+        records: [{ recordType: 'url', url }],
+      })
+
+      toast({
+        title: '✅ NFC Written!',
+        description: 'Hold the tag near your phone to pay.',
+        status: 'success',
+        duration: 3000,
+      })
+    } catch (error: any) {
+      console.error('NFC write failed:', error)
+      let message = error.message || 'Failed to write to NFC tag.'
+
+      if (message.includes('aborted')) {
+        message = 'Operation canceled.'
+      } else if (message.includes('no tag')) {
+        message = 'No NFC tag detected. Try again.'
+      }
+
+      toast({
+        title: 'NFC Write Failed',
+        description: message,
+        status: 'error',
+        duration: 5000,
+      })
+    }
+  }
 
   // Check if session key is expired
   const isSessionKeyExpired = sessionKey
@@ -993,9 +1045,56 @@ export default function PaymentPage() {
           <ModalFooter>
             {!isQRGenerated ? (
               <>
-                <Button colorScheme="blue" mr={3} onClick={handleRequestPayment}>
+                <Button
+                  colorScheme="blue"
+                  mr={3}
+                  onClick={handleRequestPayment}
+                  isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                  leftIcon={<FaQrcode />}
+                >
                   Generate QR
                 </Button>
+
+                {isWebNFCSupported ? (
+                  <Button
+                    colorScheme="green"
+                    mr={3}
+                    leftIcon={<FaSatellite />}
+                    onClick={() => {
+                      if (!safeAddress || !requestAmount) return
+                      try {
+                        const amountInWei = ethers.parseEther(requestAmount).toString()
+                        const paymentUrl = generatePaymentRequestUrl(
+                          safeAddress,
+                          amountInWei,
+                          EURO_TOKEN_ADDRESS
+                        )
+                        writeNFC(paymentUrl)
+                      } catch (err) {
+                        toast({
+                          title: 'Invalid Amount',
+                          description: 'Please enter a valid EUR amount.',
+                          status: 'error',
+                          duration: 3000,
+                        })
+                      }
+                    }}
+                    isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                  >
+                    Write to NFC
+                  </Button>
+                ) : (
+                  <Tooltip
+                    label="NFC writing is only available on Android (Chrome)"
+                    fontSize="sm"
+                    hasArrow
+                  >
+                    <Button isDisabled colorScheme="gray">
+                      NFC Not Available
+                    </Button>
+                  </Tooltip>
+                )}
+
                 <Button variant="ghost" onClick={handleRequestModalClose}>
                   Close
                 </Button>
