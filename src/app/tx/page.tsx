@@ -107,7 +107,7 @@ export default function PaymentPage() {
 
   // Load saved Safe data from localStorage
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && user.ethereumAddress) {
       const saved = localStorage.getItem(`safe_${user.id}`)
       if (saved) {
         const data = JSON.parse(saved)
@@ -117,18 +117,16 @@ export default function PaymentPage() {
         }
       }
 
-      // Get user address and deployment block for transaction history
-      ;(async () => {
-        const wallet0 = await deriveWallet(0)
-        setUserAddress(wallet0.address)
+      // Using user.ethereumAddress directly
+      const userAddr = user.ethereumAddress
+      setUserAddress(userAddr)
 
-        const safeData = SafeStorage.getSafeData(wallet0.address, 10200)
-        if (safeData?.deploymentBlockNumber) {
-          setDeploymentBlock(safeData.deploymentBlockNumber)
-        }
-      })()
+      const safeData = SafeStorage.getSafeData(userAddr, 10200)
+      if (safeData?.deploymentBlockNumber) {
+        setDeploymentBlock(safeData.deploymentBlockNumber)
+      }
     }
-  }, [isAuthenticated, user, deriveWallet])
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     return () => {
@@ -513,6 +511,8 @@ export default function PaymentPage() {
             const transferAmount = ethers.parseEther(amount).toString()
             updateBalanceOptimistically(`-${transferAmount}`)
             setPaymentRequestDetected(false)
+            setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+            setAmount('1')
 
             // Create a transaction history item with 'verified' status
             const newTransaction: Transaction = {
@@ -643,6 +643,8 @@ export default function PaymentPage() {
       })
       setIsSending(false)
       setPaymentRequestDetected(false)
+      setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
+      setAmount('1')
     }
   }
 
