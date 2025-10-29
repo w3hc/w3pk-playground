@@ -80,6 +80,7 @@ export default function PaymentPage() {
   const insufficientBalanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [recipient, setRecipient] = useState('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
   const [amount, setAmount] = useState('1')
+  const [paymentRequestDetected, setPaymentRequestDetected] = useState(false)
 
   const {
     isOpen: isRequestModalOpen,
@@ -133,6 +134,39 @@ export default function PaymentPage() {
     return () => {
       if (insufficientBalanceTimeoutRef.current) {
         clearTimeout(insufficientBalanceTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const recipientParam = urlParams.get('recipient')
+    const valueParam = urlParams.get('value')
+    const tokenParam = urlParams.get('token')
+
+    if (
+      recipientParam &&
+      valueParam &&
+      tokenParam &&
+      ethers.isAddress(recipientParam) &&
+      !isNaN(Number(valueParam)) &&
+      ethers.isAddress(tokenParam) &&
+      tokenParam.toLowerCase() === EURO_TOKEN_ADDRESS.toLowerCase()
+    ) {
+      try {
+        const amountInEth = ethers.formatEther(valueParam)
+        setRecipient(recipientParam)
+        setAmount(amountInEth)
+        setPaymentRequestDetected(true)
+
+        if (window.history && window.history.replaceState) {
+          const cleanUrl = window.location.pathname
+          window.history.replaceState({}, '', cleanUrl)
+        }
+      } catch (e) {
+        console.warn('Invalid value parameter:', valueParam)
       }
     }
   }, [])
@@ -478,6 +512,7 @@ export default function PaymentPage() {
             // Optimistically reduce balance
             const transferAmount = ethers.parseEther(amount).toString()
             updateBalanceOptimistically(`-${transferAmount}`)
+            setPaymentRequestDetected(false)
 
             // Create a transaction history item with 'verified' status
             const newTransaction: Transaction = {
@@ -528,6 +563,7 @@ export default function PaymentPage() {
             // Clear form and reload balance and transactions (wait for Blockscout indexing)
             setRecipient('0x502fb0dFf6A2adbF43468C9888D1A26943eAC6D1')
             setAmount('1')
+            setPaymentRequestDetected(false)
             setTimeout(() => {
               loadBalance()
               refetchTransactions().then(() => {
@@ -606,6 +642,7 @@ export default function PaymentPage() {
         duration: 8000,
       })
       setIsSending(false)
+      setPaymentRequestDetected(false)
     }
   }
 
@@ -796,6 +833,11 @@ export default function PaymentPage() {
                     <NumberDecrementStepper />
                   </NumberInputStepper>
                 </NumberInput>
+                {paymentRequestDetected && (
+                  <Text mt={3} fontSize="md" color="red">
+                    Incoming payment request detected. Would you like to proceed?
+                  </Text>
+                )}
               </FormControl>
 
               <HStack spacing={4}>
@@ -812,15 +854,17 @@ export default function PaymentPage() {
                 >
                   Send
                 </Button>
-                <Button
-                  colorScheme="blue"
-                  variant="outline"
-                  size="sm"
-                  onClick={onRequestModalOpen}
-                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
-                >
-                  Request Payment
-                </Button>
+                {!paymentRequestDetected && (
+                  <Button
+                    colorScheme="blue"
+                    variant="outline"
+                    size="sm"
+                    onClick={onRequestModalOpen}
+                    isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                  >
+                    Request Payment
+                  </Button>
+                )}
               </HStack>
 
               {insufficientBalance && (
