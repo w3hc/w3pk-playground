@@ -1,4 +1,6 @@
 const { createServer } = require('http')
+const { createServer: createHttpsServer } = require('https')
+const { readFileSync } = require('fs')
 const { parse } = require('url')
 const next = require('next')
 const { WebSocketServer } = require('ws')
@@ -22,8 +24,15 @@ global.wsConnections = connections
 global.wsRecipientConnections = recipientConnections
 
 app.prepare().then(() => {
-  const server = createServer(async (req, res) => {
+  // In production, try to use HTTPS if SSL certificates are available
+  let server
+  const useHttps = !dev && process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH
+
+  const requestHandler = async (req, res) => {
     try {
+      // Add security headers for NFC support
+      res.setHeader('Permissions-Policy', 'nfc=*')
+
       const parsedUrl = parse(req.url, true)
       await handle(req, res, parsedUrl)
     } catch (err) {
@@ -31,7 +40,29 @@ app.prepare().then(() => {
       res.statusCode = 500
       res.end('internal server error')
     }
-  })
+  }
+
+  if (useHttps) {
+    try {
+      const httpsOptions = {
+        key: readFileSync(process.env.SSL_KEY_PATH),
+        cert: readFileSync(process.env.SSL_CERT_PATH),
+      }
+      server = createHttpsServer(httpsOptions, requestHandler)
+      console.log('> Using HTTPS server (NFC support enabled)')
+    } catch (error) {
+      console.warn('> Failed to load SSL certificates, falling back to HTTP:', error.message)
+      server = createServer(requestHandler)
+    }
+  } else {
+    server = createServer(requestHandler)
+    if (!dev) {
+      console.warn(
+        '> WARNING: Running in production without HTTPS. NFC will not work without HTTPS!'
+      )
+      console.warn('> Set SSL_CERT_PATH and SSL_KEY_PATH environment variables to enable HTTPS')
+    }
+  }
 
   // Create WebSocket server for transaction status
   const wss = new WebSocketServer({ noServer: true })
@@ -107,11 +138,16 @@ app.prepare().then(() => {
 
   server.listen(port, err => {
     if (err) throw err
-    console.log(`> Ready on http://${hostname}:${port}`)
-    console.log(`> WebSocket server ready on ws://${hostname}:${port}/api/ws/tx-status`)
+    const protocol = useHttps ? 'https' : 'http'
+    const wsProtocol = useHttps ? 'wss' : 'ws'
+    console.log(`> Ready on ${protocol}://${hostname}:${port}`)
+    console.log(`> WebSocket server ready on ${wsProtocol}://${hostname}:${port}/api/ws/tx-status`)
     if (dev) {
       console.log(`> Note: Hot Module Replacement (HMR) is not available with custom server`)
       console.log(`> You'll need to refresh the page manually to see changes`)
+    }
+    if (useHttps) {
+      console.log(`> NFC support enabled (HTTPS + Permissions-Policy header)`)
     }
   })
 })

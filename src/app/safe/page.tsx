@@ -360,12 +360,12 @@ export default function SafePage() {
         throw new Error(sessionData.error || 'Failed to create session key')
       }
 
-      toast({
-        title: 'Setup Complete!',
-        description: 'Your Safe and session key are ready.',
-        status: 'success',
-        duration: 5000,
-      })
+      // toast({
+      //   title: 'Setup Complete!',
+      //   description: 'Your Safe and session key are ready.',
+      //   status: 'success',
+      //   duration: 5000,
+      // })
       router.push('/tx')
     } catch (error: any) {
       console.error('Combined setup failed:', error)
@@ -443,7 +443,7 @@ export default function SafePage() {
         {/* Header */}
         <Box>
           <Heading as="h1" size="xl" mb={2}>
-            Safe Smart Wallet
+            Safe Onchain Wallet
           </Heading>
           <Text color="gray.400">Deploy and manage your Safe with gasless session keys</Text>
         </Box>
@@ -464,7 +464,7 @@ export default function SafePage() {
                   <Box>
                     <AlertTitle>No Safe Deployed</AlertTitle>
                     <AlertDescription fontSize="sm">
-                      Deploy a Safe smart wallet to get started with gasless transactions
+                      Deploy a Safe onchain wallet to get started with gasless transactions
                     </AlertDescription>
                   </Box>
                 </Alert>
@@ -529,7 +529,14 @@ export default function SafePage() {
                   <Text fontWeight="bold">Balance:</Text>
                   <HStack>
                     {isLoadingBalance ? (
-                      <Spinner size="sm" />
+                      <>
+                        <Text fontFamily="mono">
+                          {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)} EUR
+                        </Text>
+                        <Button size="xs" onClick={loadBalance} variant="ghost">
+                          Refresh
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <Text fontFamily="mono">
@@ -644,10 +651,7 @@ export default function SafePage() {
                           </Text>
                         </HStack>
                         <Text fontSize="lg" fontFamily="mono">
-                          {parseFloat(
-                            ethers.formatEther(sessionKey.permissions.spendingLimit)
-                          ).toFixed(2)}{' '}
-                          EUR
+                          {parseFloat(ethers.formatEther(sessionKey.permissions.spendingLimit))} EUR
                         </Text>
                       </Box>
 
