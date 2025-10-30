@@ -248,11 +248,6 @@ export default function PaymentPage() {
         setRecipient(recipientParam)
         setAmount(amountInEth)
         setPaymentRequestDetected(true)
-
-        if (window.history && window.history.replaceState) {
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, '', cleanUrl)
-        }
       } catch (e) {
         console.warn('Invalid value parameter:', valueParam)
       }
@@ -310,6 +305,14 @@ export default function PaymentPage() {
     }
   }, [safeAddress])
 
+  // Handle payment request modal close
+  const handleRequestModalClose = useCallback(() => {
+    setRequestAmount('')
+    setIsQRGenerated(false)
+    setQrData('')
+    onRequestModalClose()
+  }, [onRequestModalClose])
+
   useEffect(() => {
     if (safeAddress) {
       loadBalance()
@@ -365,6 +368,22 @@ export default function PaymentPage() {
             }
 
             setPendingTransactions(prev => [newIncomingTransaction, ...prev])
+
+            // Auto-close payment request modal if it's open and amount matches
+            if (isRequestModalOpen && requestAmount && qrData) {
+              // Convert requestAmount (EUR) to wei for comparison
+              try {
+                const requestedAmountWei = ethers.parseEther(requestAmount).toString()
+                const receivedAmountWei = update.amount || '0'
+
+                // Close modal if the received amount matches the requested amount
+                if (requestedAmountWei === receivedAmountWei) {
+                  handleRequestModalClose()
+                }
+              } catch (error) {
+                console.error('Error comparing amounts for modal auto-close:', error)
+              }
+            }
           }
 
           // Start showing refetch loader (only for non-self-sends, as self-sends are handled by outgoing)
@@ -427,7 +446,18 @@ export default function PaymentPage() {
     return () => {
       ws.close()
     }
-  }, [safeAddress, user, toast, loadBalance, refetchTransactions])
+  }, [
+    safeAddress,
+    user,
+    toast,
+    loadBalance,
+    refetchTransactions,
+    isRequestModalOpen,
+    requestAmount,
+    qrData,
+    handleRequestModalClose,
+    updateBalanceOptimistically,
+  ])
 
   const getTxBaseUrl = () => {
     if (typeof window === 'undefined') return 'https://w3pk.w3hc.org/tx/'
@@ -597,6 +627,11 @@ export default function PaymentPage() {
               // },
             })
 
+            if (window.history && window.history.replaceState) {
+              const cleanUrl = window.location.pathname
+              window.history.replaceState({}, '', cleanUrl)
+            }
+
             // Optimistically reduce balance
             const transferAmount = ethers.parseEther(amount).toString()
             updateBalanceOptimistically(`-${transferAmount}`)
@@ -757,13 +792,6 @@ export default function PaymentPage() {
         isClosable: true,
       })
     }
-  }
-
-  const handleRequestModalClose = () => {
-    setRequestAmount('')
-    setIsQRGenerated(false)
-    setQrData('')
-    onRequestModalClose()
   }
 
   const copyToClipboard = (text: string) => {
