@@ -224,20 +224,21 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       console.log('Registration successful')
 
       toast({
-        title: 'Registration Successful! 🎉',
-        description: 'Your encrypted wallet has been created and stored securely with w3pk',
+        title: 'Done! 🎉',
+        description:
+          "Your encrypted wallet has been created and stored on your device. Don't forget to back it up!",
         status: 'success',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       })
 
-      toast({
-        title: '🚨 BACKUP YOUR RECOVERY PHRASE',
-        description: 'Save your 12-word recovery phrase in a safe place. This is your only backup!',
-        status: 'warning',
-        duration: 10000,
-        isClosable: true,
-      })
+      // toast({
+      //   title: '🚨 BACKUP YOUR RECOVERY PHRASE',
+      //   description: 'Save your 12-word recovery phrase in a safe place. This is your only backup!',
+      //   status: 'warning',
+      //   duration: 10000,
+      //   isClosable: true,
+      // })
     } catch (error: any) {
       console.error('Registration failed:', error)
       toast({
@@ -407,7 +408,7 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
 
     toast({
       title: 'Logged Out',
-      description: 'You have been successfully logged out. Your wallet remains on this device.',
+      description: 'You have been logged out.',
       status: 'info',
       duration: 4000,
       isClosable: true,
