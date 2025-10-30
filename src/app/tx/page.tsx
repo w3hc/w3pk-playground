@@ -92,14 +92,43 @@ export default function PaymentPage() {
   const [requestAmount, setRequestAmount] = useState<string>('')
   const [isQRGenerated, setIsQRGenerated] = useState<boolean>(false)
   const [qrData, setQrData] = useState<string>('')
+  const [isWebNFCSupported, setIsWebNFCSupported] = useState(false)
 
-  const isWebNFCSupported = typeof window !== 'undefined' && 'nfc' in navigator
+  // Check NFC support after mount (client-side only)
+  useEffect(() => {
+    const checkNFCSupport = () => {
+      if (typeof window === 'undefined') {
+        setIsWebNFCSupported(false)
+        return
+      }
+
+      // Check if running on HTTPS or localhost (required for NFC)
+      const isSecureContext = window.isSecureContext
+      if (!isSecureContext) {
+        console.warn('NFC requires HTTPS or localhost')
+        setIsWebNFCSupported(false)
+        return
+      }
+
+      // Check if NFC is available in navigator
+      const hasNFC = 'NDEFReader' in window && 'NDEFWriter' in (window as any)
+      setIsWebNFCSupported(hasNFC)
+
+      if (hasNFC) {
+        console.log('✅ NFC is supported on this device')
+      } else {
+        console.log('❌ NFC is not supported on this device')
+      }
+    }
+
+    checkNFCSupport()
+  }, [])
 
   const writeNFC = async (url: string) => {
     if (!isWebNFCSupported) {
       toast({
         title: 'NFC Not Available',
-        description: 'NFC writing is only supported on Android with Chrome.',
+        description: 'NFC writing requires HTTPS and is only supported on Android with Chrome.',
         status: 'warning',
         duration: 4000,
       })
@@ -114,8 +143,11 @@ export default function PaymentPage() {
       }
 
       const writer = new NDEFWriter()
+
+      console.log('Writing to NFC tag:', url)
+
       await writer.write({
-        records: [{ recordType: 'url', url }],
+        records: [{ recordType: 'url', data: url }],
       })
 
       toast({
@@ -128,7 +160,13 @@ export default function PaymentPage() {
       console.error('NFC write failed:', error)
       let message = error.message || 'Failed to write to NFC tag.'
 
-      if (message.includes('aborted')) {
+      if (error.name === 'NotAllowedError') {
+        message = 'NFC permission denied. Please allow NFC access in your browser settings.'
+      } else if (error.name === 'NotSupportedError') {
+        message = 'NFC is not supported on this device.'
+      } else if (error.name === 'NotReadableError') {
+        message = 'Cannot read NFC tag. Try again.'
+      } else if (message.includes('aborted') || error.name === 'AbortError') {
         message = 'Operation canceled.'
       } else if (message.includes('no tag')) {
         message = 'No NFC tag detected. Try again.'
@@ -1085,7 +1123,7 @@ export default function PaymentPage() {
                   </Button>
                 ) : (
                   <Tooltip
-                    label="NFC writing is only available on Android (Chrome)"
+                    label="NFC requires HTTPS and is only available on Android with Chrome"
                     fontSize="sm"
                     hasArrow
                   >
