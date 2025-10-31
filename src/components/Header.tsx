@@ -245,9 +245,9 @@ export default function Header() {
                     ZK proofs
                   </MenuItem>
                 </Link>
-                <Link href="/backup" color="white">
+                <Link href="/settings" color="white">
                   <MenuItem fontSize="md" px={4} py={3}>
-                    Backup
+                    Settings
                   </MenuItem>
                 </Link>
               </MenuList>
