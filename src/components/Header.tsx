@@ -23,6 +23,9 @@ import {
   FormControl,
   FormLabel,
   VStack,
+  useToast,
+  FormErrorMessage,
+  Link as ChakraLink,
 } from '@chakra-ui/react'
 import Link from 'next/link'
 import { HamburgerIcon } from '@chakra-ui/icons'
@@ -36,9 +39,11 @@ import { FaGithub } from 'react-icons/fa'
 export default function Header() {
   const { isAuthenticated, user, isLoading, login, register, logout } = useW3PK()
   const t = useTranslation()
+  const toast = useToast()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [username, setUsername] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const [isUsernameInvalid, setIsUsernameInvalid] = useState(false)
 
   const [scrollPosition, setScrollPosition] = useState(0)
 
@@ -57,14 +62,45 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const validateUsername = (input: string): boolean => {
+    if (!input.trim()) {
+      return true
+    }
+    return /^[a-zA-Z0-9_]{3,50}$/.test(input.trim())
+  }
+
   const handleLogin = async () => {
     await login()
   }
 
   const handleRegister = async () => {
     if (!username.trim()) {
+      toast({
+        title: 'Username Required',
+        description: 'Please enter a username to register.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      })
+      setIsUsernameInvalid(true)
       return
     }
+
+    const isValid = validateUsername(username)
+    if (!isValid) {
+      // toast({
+      //   title: 'Invalid Username',
+      //   description:
+      //     'Username must be 3-50 characters long and contain only letters, numbers, and underscores. Hyphens and other special characters are not allowed.',
+      //   status: 'error',
+      //   duration: 5000,
+      //   isClosable: true,
+      // })
+      setIsUsernameInvalid(true)
+      return
+    }
+
+    setIsUsernameInvalid(false)
 
     try {
       setIsRegistering(true)
@@ -78,12 +114,20 @@ export default function Header() {
     }
   }
 
+  useEffect(() => {
+    const isValid = validateUsername(username)
+    if (isValid) {
+      setIsUsernameInvalid(false)
+    }
+  }, [username])
+
   const handleLogout = () => {
     logout()
   }
 
   const handleModalClose = () => {
     setUsername('')
+    setIsUsernameInvalid(false)
     onClose()
   }
 
@@ -221,11 +265,20 @@ export default function Header() {
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4}>
-              <Text fontSize="sm" color="gray.400" textAlign="center">
-                Create a new account with w3pk authentication. An Ethereum wallet will be generated
-                automatically.
+              <Text fontSize="sm" color="gray.400">
+                An Ethereum wallet will be created and securely stored on your device, protected by
+                your biometric or PIN thanks to{' '}
+                <ChakraLink
+                  href={'https://github.com/w3hc/w3pk/blob/main/src/auth/register.ts#L17-L102'}
+                  color="#45a2f8"
+                  isExternal
+                >
+                  w3pk
+                </ChakraLink>
+                .
               </Text>
-              <FormControl>
+              <FormControl isInvalid={isUsernameInvalid}>
+                {' '}
                 <FormLabel>Username</FormLabel>
                 <Input
                   value={username}
@@ -235,13 +288,22 @@ export default function Header() {
                   border="1px solid"
                   borderColor="gray.600"
                   _hover={{ borderColor: 'gray.500' }}
-                  _focus={{ borderColor: '#8c1c84', boxShadow: '0 0 0 1px #8c1c84' }}
+                  _focus={{
+                    borderColor: '#8c1c84',
+                    boxShadow: '0 0 0 1px #8c1c84',
+                  }}
                   onKeyPress={e => {
                     if (e.key === 'Enter' && username.trim()) {
                       handleRegister()
                     }
                   }}
                 />
+                {isUsernameInvalid && username.trim() && (
+                  <FormErrorMessage>
+                    Username must be 3-50 characters long and contain only letters, numbers, and
+                    underscores.
+                  </FormErrorMessage>
+                )}
               </FormControl>
             </VStack>
           </ModalBody>
