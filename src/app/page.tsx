@@ -35,7 +35,7 @@ export default function Home() {
                 Sit back, relax, and enjoy!
               </Text>
 
-              <Text mt={12} fontSize="sm" color="white">
+              <Text mt={12} fontSize="md" color="white">
                 <strong>{user?.id}</strong>
               </Text>
             </Box>
@@ -523,7 +523,7 @@ export default function Home() {
                 </Box>
               </Link>
 
-              <Link href="/backup">
+              <Link href="/settings">
                 <Box
                   bg="gray.800"
                   p={6}
@@ -548,15 +548,15 @@ export default function Home() {
                         <Icon as={FiShield} color="white" boxSize={5} />
                       </Box>
                       <Heading as="h3" size="md" color="white">
-                        Backup
+                        Settings
                       </Heading>
                     </Flex>
                     <Text color="gray.400" fontSize="sm">
-                      Check your backup status and improve it
+                      Manage your backup, recovery and sync
                     </Text>
                   </Box>
                   <Text mt={2} color="#8c1c84" fontSize="xs" fontWeight="semibold">
-                    Backup →
+                    Settings →
                   </Text>
                 </Box>
               </Link>
