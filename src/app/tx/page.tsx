@@ -321,12 +321,14 @@ export default function PaymentPage() {
 
   // Listen for incoming transactions to this Safe address
   useEffect(() => {
-    if (!safeAddress || !user) return
+    if (!safeAddress) return
 
-    // Connect WebSocket to listen for incoming transactions
+    // Connect WebSocket to listen for incoming transactions (start immediately on page load)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     const ws = new WebSocket(`${protocol}//${host}/api/ws/tx-status?recipient=${safeAddress}`)
+
+    console.log('WebSocket connected for incoming transactions to:', safeAddress)
 
     ws.onmessage = async event => {
       const update = JSON.parse(event.data)
@@ -444,11 +446,11 @@ export default function PaymentPage() {
 
     // Cleanup on unmount
     return () => {
+      console.log('Closing WebSocket for incoming transactions')
       ws.close()
     }
   }, [
     safeAddress,
-    user,
     toast,
     loadBalance,
     refetchTransactions,
@@ -567,6 +569,11 @@ export default function PaymentPage() {
         data: transferData, // ERC-20 transfer call
       }
 
+      // Get the user's address from the authenticated user
+      if (!user?.ethereumAddress) {
+        throw new Error('User address not available')
+      }
+
       // Derive the session key wallet to sign the transaction
       const sessionKeyWallet = await deriveWallet(sessionKey.sessionKeyIndex)
 
@@ -579,7 +586,7 @@ export default function PaymentPage() {
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
       const signature = await sessionKeySigner.signMessage(message)
 
-      // Get derived wallet for userAddress and signing
+      // Get derived wallet for signing (wallet index 0)
       const wallet0 = await deriveWallet(0)
 
       if (!wallet0.privateKey) {
