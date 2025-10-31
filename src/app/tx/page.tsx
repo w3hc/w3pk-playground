@@ -94,6 +94,24 @@ export default function PaymentPage() {
   const [qrData, setQrData] = useState<string>('')
   const [isWebNFCSupported, setIsWebNFCSupported] = useState(false)
 
+  // Refs to access latest values in WebSocket handler without causing re-renders
+  const requestAmountRef = useRef<string>('')
+  const qrDataRef = useRef<string>('')
+  const isRequestModalOpenRef = useRef<boolean>(false)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    requestAmountRef.current = requestAmount
+  }, [requestAmount])
+
+  useEffect(() => {
+    qrDataRef.current = qrData
+  }, [qrData])
+
+  useEffect(() => {
+    isRequestModalOpenRef.current = isRequestModalOpen
+  }, [isRequestModalOpen])
+
   // Check NFC support after mount (client-side only)
   useEffect(() => {
     const checkNFCSupport = () => {
@@ -110,12 +128,17 @@ export default function PaymentPage() {
         return
       }
 
-      // Check if NFC is available in navigator
-      const hasNFC = 'NDEFReader' in window && 'NDEFWriter' in (window as any)
+      // Check if both NDEFReader AND NDEFWriter are available
+      // Note: Some devices have Reader but not Writer due to hardware/manufacturer restrictions
+      const hasNDEFReader = 'NDEFReader' in window
+      const hasNDEFWriter = 'NDEFWriter' in (window as any)
+      const hasNFC = hasNDEFReader && hasNDEFWriter
       setIsWebNFCSupported(hasNFC)
 
       if (hasNFC) {
-        console.log('✅ NFC is supported on this device')
+        console.log('✅ NFC Write is supported on this device')
+      } else if (hasNDEFReader && !hasNDEFWriter) {
+        console.log('⚠️ NFC Read is supported but NFC Write is not available (NDEFWriter missing)')
       } else {
         console.log('❌ NFC is not supported on this device')
       }
@@ -127,10 +150,10 @@ export default function PaymentPage() {
   const writeNFC = async (url: string) => {
     if (!isWebNFCSupported) {
       toast({
-        title: 'NFC Not Available',
-        description: 'NFC writing requires HTTPS and is only supported on Android with Chrome.',
+        title: 'NFC Write Not Available',
+        description: 'NFC writing requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Visit /nfc to troubleshoot.',
         status: 'warning',
-        duration: 4000,
+        duration: 5000,
       })
       return
     }
@@ -340,6 +363,23 @@ export default function PaymentPage() {
         // Check if this is a self-send (sender is also the Safe address)
         const isSelfSend = update.from?.toLowerCase() === safeAddress.toLowerCase()
 
+        // Auto-close payment request modal if it's open and amount matches
+        // This triggers immediately when we receive ANY incoming transaction update
+        if (isRequestModalOpenRef.current && requestAmountRef.current && qrDataRef.current) {
+          try {
+            const requestedAmountWei = ethers.parseEther(requestAmountRef.current).toString()
+            const receivedAmountWei = update.amount || '0'
+
+            // Close modal if the received amount matches the requested amount
+            if (requestedAmountWei === receivedAmountWei) {
+              console.log('Auto-closing payment request modal - payment received!')
+              handleRequestModalClose()
+            }
+          } catch (error) {
+            console.error('Error comparing amounts for modal auto-close:', error)
+          }
+        }
+
         if (update.status === 'verified') {
           // Skip adding to pending if it's a self-send (already added by outgoing WebSocket)
           if (!isSelfSend) {
@@ -370,22 +410,6 @@ export default function PaymentPage() {
             }
 
             setPendingTransactions(prev => [newIncomingTransaction, ...prev])
-
-            // Auto-close payment request modal if it's open and amount matches
-            if (isRequestModalOpen && requestAmount && qrData) {
-              // Convert requestAmount (EUR) to wei for comparison
-              try {
-                const requestedAmountWei = ethers.parseEther(requestAmount).toString()
-                const receivedAmountWei = update.amount || '0'
-
-                // Close modal if the received amount matches the requested amount
-                if (requestedAmountWei === receivedAmountWei) {
-                  handleRequestModalClose()
-                }
-              } catch (error) {
-                console.error('Error comparing amounts for modal auto-close:', error)
-              }
-            }
           }
 
           // Start showing refetch loader (only for non-self-sends, as self-sends are handled by outgoing)
@@ -449,17 +473,8 @@ export default function PaymentPage() {
       console.log('Closing WebSocket for incoming transactions')
       ws.close()
     }
-  }, [
-    safeAddress,
-    toast,
-    loadBalance,
-    refetchTransactions,
-    isRequestModalOpen,
-    requestAmount,
-    qrData,
-    handleRequestModalClose,
-    updateBalanceOptimistically,
-  ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeAddress])
 
   const getTxBaseUrl = () => {
     if (typeof window === 'undefined') return 'https://w3pk.w3hc.org/tx/'
@@ -1158,7 +1173,7 @@ export default function PaymentPage() {
                   </Button>
                 ) : (
                   <Tooltip
-                    label="NFC requires HTTPS and is only available on Android with Chrome"
+                    label="NFC write requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Some devices may have restricted NFC write access."
                     fontSize="sm"
                     hasArrow
                   >
