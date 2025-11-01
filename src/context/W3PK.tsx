@@ -217,10 +217,23 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     try {
       setIsLoading(true)
       console.log('=== Starting Registration with w3pk ===')
+      console.log('Username:', username)
+      console.log('w3pk instance:', w3pk)
 
-      await w3pk.register({
+      // Add timeout wrapper to detect hanging registration
+      const registrationPromise = w3pk.register({
         username,
       })
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          console.error('[W3PK] Registration timeout - w3pk.register() did not complete')
+          reject(new Error('Registration timed out. Please try again or check browser console for errors.'))
+        }, 45000) // 45 second timeout
+      )
+
+      await Promise.race([registrationPromise, timeoutPromise])
+
       console.log('Registration successful')
 
       toast({
@@ -241,15 +254,22 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       // })
     } catch (error: any) {
       console.error('Registration failed:', error)
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
+
       toast({
         title: 'Registration Failed',
         description: error.message || 'Failed to register with w3pk',
         status: 'error',
-        duration: 5000,
+        duration: 8000,
         isClosable: true,
       })
       throw error
     } finally {
+      console.log('[W3PK] Registration cleanup, setting loading to false')
       setIsLoading(false)
     }
   }

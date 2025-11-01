@@ -104,12 +104,32 @@ export default function Header() {
 
     try {
       setIsRegistering(true)
-      await register(username.trim())
+      console.log('[Header] Starting registration for:', username.trim())
+
+      // Add timeout to prevent infinite loading
+      const registrationPromise = register(username.trim())
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Registration timeout after 60 seconds')), 60000)
+      )
+
+      await Promise.race([registrationPromise, timeoutPromise])
+
+      console.log('[Header] Registration completed successfully')
       setUsername('')
       onClose()
-    } catch (error) {
-      console.error('Registration failed:', error)
+    } catch (error: any) {
+      console.error('[Header] Registration failed:', error)
+
+      // Show user-friendly error message
+      toast({
+        title: 'Registration Failed',
+        description: error.message || 'Unable to complete registration. Please try again.',
+        status: 'error',
+        duration: 8000,
+        isClosable: true,
+      })
     } finally {
+      console.log('[Header] Cleaning up registration state')
       setIsRegistering(false)
     }
   }
