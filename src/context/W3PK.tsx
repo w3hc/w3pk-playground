@@ -438,16 +438,28 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         throw new Error('Stealth address module not initialized')
       }
 
+      // Generate stealth address (returns stealthAddress, ephemeralPublicKey, viewTag)
       const stealthResult = await w3pk.stealth.generateStealthAddress()
       console.log('Stealth address generated:', stealthResult.stealthAddress)
 
-      if (!stealthResult.stealthPrivateKey) {
-        throw new Error('Stealth private key not generated')
-      }
+      // Get user's stealth keys to compute the private key
+      const keys = await w3pk.stealth.getKeys()
+      console.log('Retrieved stealth keys')
+
+      // Import computeStealthPrivateKey from w3pk
+      const { computeStealthPrivateKey } = await import('w3pk')
+
+      // Compute the stealth private key
+      const stealthPrivateKey = computeStealthPrivateKey(
+        keys.viewingKey,
+        keys.spendingKey,
+        stealthResult.ephemeralPublicKey
+      )
+      console.log('Stealth private key computed')
 
       return {
         stealthAddress: stealthResult.stealthAddress,
-        stealthPrivateKey: stealthResult.stealthPrivateKey,
+        stealthPrivateKey,
         ephemeralPublicKey: stealthResult.ephemeralPublicKey,
       }
     } catch (error: any) {

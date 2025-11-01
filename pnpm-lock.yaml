@@ -60,8 +60,8 @@ importers:
         specifier: ^16.0.0
         version: 16.1.0(react@19.2.0)
       w3pk:
-        specifier: ^0.7.3
-        version: 0.7.3(ethers@6.15.0)
+        specifier: ^0.7.4
+        version: 0.7.4(ethers@6.15.0)
       ws:
         specifier: ^8.18.3
         version: 8.18.3
@@ -2666,8 +2666,8 @@ packages:
       typescript:
         optional: true
 
-  w3pk@0.7.3:
-    resolution: {integrity: sha512-fdKMZFDze9i2PL5unbkx3QUs8deCRP7q99TkQVL/odjjkfUrrUiWHc6dgWO5QZEnkxtef/WNCHIWyn+jNttqWA==}
+  w3pk@0.7.4:
+    resolution: {integrity: sha512-+rTcbVF6ghW1L63nDVbPGh1HNPk8Qf6xMUDay/byxLacsL3RrpX3gcXH6ktJmVXf6x3rVj2Ir9q5Rqoaxpz6ag==}
     peerDependencies:
       ethers: ^6.0.0
 
@@ -6035,7 +6035,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  w3pk@0.7.3(ethers@6.15.0):
+  w3pk@0.7.4(ethers@6.15.0):
     dependencies:
       '@simplewebauthn/browser': 13.2.2
       ethers: 6.15.0
