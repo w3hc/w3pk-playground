@@ -4,16 +4,23 @@ Passwordless Ethereum wallets secured by biometric authentication and client-sid
 
 - [**Live playground**](http://w3pk.w3hc.org)
 - [w3pk SDK repo](https://github.com/w3hc/w3pk)
-- [WebAuthn API repo](https://github.com/julienbrg/nestjs-webauthn) (implements WebAuthn workflow)
 - [Stealth Gov (example voting app)](https://github.com/w3hc/stealth-gov)
 
 The w3pk SDK includes the following features:
 
 - 🔐 Passwordless authentication (WebAuthn/FIDO2)
-- 💰 Encrypted wallet management (AES-GCM-256)
+- 🔒 Client-only biometric-gated wallet encryption (AES-GCM-256)
+- ⏱️ Session management (configurable duration, prevents repeated prompts)
 - 🌱 HD wallet generation (BIP39/BIP44)
 - 🔢 Multi-address derivation
-- 🥷 Stealth addresses (privacy-preserving transactions)
+- 🥷 ERC-5564 stealth addresses (privacy-preserving transactions with view tags)
+- 🧮 ZK primitives (zero-knowledge proof generation and verification)
+- 🔗 Chainlist support (2390+ networks, auto-filtered RPC endpoints)
+- ⚡ EIP-7702 network detection (329+ supported networks)
+- 🛡️ Three-layer backup & recovery system
+  - Passkey auto-sync (iCloud/Google/Microsoft)
+  - Encrypted backups (ZIP/QR with password protection)
+  - Social recovery (Shamir Secret Sharing)
 
 ## Install
 
