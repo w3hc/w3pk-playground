@@ -46,10 +46,30 @@ import {
   DownloadIcon,
   LockIcon,
 } from '@chakra-ui/icons'
-import { FiShield, FiCheckCircle, FiCloud, FiUsers, FiKey, FiDownload } from 'react-icons/fi'
+import {
+  FiShield,
+  FiCheckCircle,
+  FiCloud,
+  FiUsers,
+  FiKey,
+  FiDownload,
+  FiDatabase,
+  FiHardDrive,
+  FiFileText,
+} from 'react-icons/fi'
 import { useW3PK } from '../../../src/context/W3PK'
 import Spinner from '../../../src/components/Spinner'
 import PasswordModal from '../../components/PasswordModal'
+import { detectBrowser, isWebAuthnAvailable } from '../../../src/utils/browserDetection'
+import {
+  inspectLocalStorage,
+  inspectIndexedDB,
+  formatValue,
+  maskSensitiveData,
+  type LocalStorageItem,
+  type IndexedDBInfo,
+} from '../../../src/utils/storageInspection'
+import { getActivityLogs, downloadLogsAsMarkdown } from '../../../src/utils/activityLogger' // TODO: remove logging
 
 interface StoredAccount {
   username: string
@@ -67,8 +87,121 @@ const SettingsPage = () => {
   const [accountToDelete, setAccountToDelete] = useState<StoredAccount | null>(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
 
+  // Storage inspection state
+  const [localStorageData, setLocalStorageData] = useState<LocalStorageItem[]>([])
+  const [indexedDBData, setIndexedDBData] = useState<IndexedDBInfo[]>([])
+  const [isInspectingLocalStorage, setIsInspectingLocalStorage] = useState(false)
+  const [isInspectingIndexedDB, setIsInspectingIndexedDB] = useState(false)
+  const [showLocalStorageModal, setShowLocalStorageModal] = useState(false)
+  const [showIndexedDBModal, setShowIndexedDBModal] = useState(false)
+  const [activityLogs, setActivityLogs] = useState<string>('')
+
   const toast = useToast()
   const { isAuthenticated, user, getBackupStatus, createZipBackup, logout } = useW3PK()
+
+  // Handler functions (defined before the early return)
+  const handleInspectLocalStorage = async () => {
+    setIsInspectingLocalStorage(true)
+    try {
+      const data = await inspectLocalStorage()
+      setLocalStorageData(data)
+
+      toast({
+        title: 'LocalStorage Inspected',
+        description: `Found ${data.length} items. Scroll down to see results.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error) {
+      console.error('Error inspecting localStorage:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to inspect localStorage',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    } finally {
+      setIsInspectingLocalStorage(false)
+    }
+  }
+
+  const handleInspectIndexedDB = async () => {
+    setIsInspectingIndexedDB(true)
+    try {
+      const data = await inspectIndexedDB()
+      setIndexedDBData(data)
+
+      const totalRecords = data.reduce((sum, db) => sum + db.records.length, 0)
+      toast({
+        title: 'IndexedDB Inspected',
+        description: `Found ${data.length} database(s) with ${totalRecords} record(s). Scroll down to see results.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error) {
+      console.error('Error inspecting IndexedDB:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to inspect IndexedDB',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    } finally {
+      setIsInspectingIndexedDB(false)
+    }
+  }
+
+  // TODO: remove logging
+  const handleLoadActivityLogs = () => {
+    const logs = getActivityLogs()
+    setActivityLogs(logs)
+
+    if (logs) {
+      const lineCount = logs.split('\n').filter(line => line.trim().startsWith('- Date:')).length
+      toast({
+        title: 'Activity Logs Loaded',
+        description: `Found ${lineCount} activity log(s). Scroll down to see results.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } else {
+      toast({
+        title: 'No Activity Logs',
+        description: 'No activity has been logged yet.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  // TODO: remove logging
+  const handleDownloadLogs = () => {
+    try {
+      downloadLogsAsMarkdown()
+      toast({
+        title: 'Logs Downloaded',
+        description: 'logs.md has been downloaded',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error) {
+      console.error('Error downloading logs:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to download logs',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
 
   // Load accounts from localStorage
   useEffect(() => {
@@ -224,13 +357,420 @@ const SettingsPage = () => {
   }
 
   if (!isAuthenticated || !getBackupStatus || !createZipBackup) {
+    // Detect browser information
+    const browserInfo = detectBrowser()
+    const webAuthnAvailable = isWebAuthnAvailable()
+
+    // Determine alert status based on browser compatibility
+    let alertStatus: 'info' | 'warning' | 'error' = 'warning'
+    if (browserInfo.warningLevel === 'error') alertStatus = 'error'
+    else if (browserInfo.warningLevel === 'warning') alertStatus = 'warning'
+    else if (browserInfo.warningLevel === 'info') alertStatus = 'info'
+
     return (
       <Container maxW="container.md" py={20}>
         <VStack spacing={8} align="stretch">
-          <Box bg="whiteAlpha.50" p={6} borderRadius="md" textAlign="center">
-            <Alert status="warning" bg="transparent" color="orange.200">
+          <Box textAlign="center" mb={4}>
+            <Heading as="h1" size="2xl" mb={4}>
+              Settings
+            </Heading>
+            <Text fontSize="lg" color="gray.400">
+              Please log in to access your settings
+            </Text>
+          </Box>
+
+          {/* Browser Information Card */}
+          <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+            <HStack mb={4}>
+              <Icon as={InfoIcon} color="#8c1c84" boxSize={6} />
+              <Heading size="md">Browser Info</Heading>
+            </HStack>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.400">
+                  Browser:
+                </Text>
+                <Text fontSize="sm" fontWeight="bold" color="white">
+                  {browserInfo.name}
+                </Text>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.400">
+                  Version:
+                </Text>
+                <Text fontSize="sm" fontWeight="bold" color="white">
+                  {browserInfo.fullVersion || browserInfo.version}
+                </Text>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.400">
+                  Operating System:
+                </Text>
+                <Text fontSize="sm" fontWeight="bold" color="white">
+                  {browserInfo.os}
+                </Text>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.400">
+                  WebAuthn Support:
+                </Text>
+                <Badge colorScheme={webAuthnAvailable ? 'green' : 'red'}>
+                  {webAuthnAvailable ? 'Available' : 'Not Available'}
+                </Badge>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.400">
+                  Compatibility:
+                </Text>
+                <Badge
+                  colorScheme={
+                    browserInfo.isSupported && !browserInfo.hasKnownIssues
+                      ? 'green'
+                      : browserInfo.hasKnownIssues
+                        ? 'yellow'
+                        : 'red'
+                  }
+                >
+                  {browserInfo.isSupported && !browserInfo.hasKnownIssues
+                    ? 'Fully Supported'
+                    : browserInfo.hasKnownIssues
+                      ? 'Known Issues'
+                      : 'Not Supported'}
+                </Badge>
+              </HStack>
+            </VStack>
+          </Box>
+
+          {/* Compatibility Warning/Recommendation */}
+          {browserInfo.recommendation && (
+            <Alert
+              status={alertStatus}
+              bg={
+                alertStatus === 'error'
+                  ? 'red.900'
+                  : alertStatus === 'warning'
+                    ? 'yellow.900'
+                    : 'blue.900'
+              }
+              borderRadius="lg"
+              opacity={0.9}
+            >
               <AlertIcon />
-              <AlertDescription>Please log in to access settings.</AlertDescription>
+              <Box fontSize="sm">
+                <Text fontWeight="bold" mb={1}>
+                  {alertStatus === 'error'
+                    ? 'Browser Not Supported'
+                    : alertStatus === 'warning'
+                      ? 'Known Issues Detected'
+                      : 'Recommendation'}
+                </Text>
+                <Text fontSize="sm">{browserInfo.recommendation}</Text>
+              </Box>
+            </Alert>
+          )}
+
+          {/* WebAuthn Not Available Warning */}
+          {!webAuthnAvailable && (
+            <Alert status="error" bg="red.900" borderRadius="lg" opacity={0.9}>
+              <AlertIcon />
+              <Box fontSize="sm">
+                <Text fontWeight="bold" mb={1}>
+                  WebAuthn Not Available
+                </Text>
+                <Text fontSize="sm">
+                  Your browser does not support WebAuthn, which is required for w3pk authentication.
+                  Please update your browser or use a supported browser:
+                </Text>
+                <List spacing={1} mt={2} ml={4} fontSize="xs">
+                  <ListItem>Chrome 67+ (May 2018)</ListItem>
+                  <ListItem>Firefox 60+ (May 2018)</ListItem>
+                  <ListItem>Safari 14+ (September 2020)</ListItem>
+                  <ListItem>Edge 18+ (November 2018)</ListItem>
+                  <ListItem>Samsung Internet 11+ (February 2020)</ListItem>
+                </List>
+              </Box>
+            </Alert>
+          )}
+
+          {/* Additional Android Browser Recommendations */}
+          {browserInfo.os === 'Android' && (
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+              <Heading size="sm" mb={3} color="#8c1c84">
+                Recommended Browsers for Android
+              </Heading>
+              <List spacing={2} fontSize="sm">
+                <ListItem>
+                  <HStack>
+                    <ListIcon
+                      as={browserInfo.name === 'Samsung Internet' ? CheckCircleIcon : InfoIcon}
+                      color={browserInfo.name === 'Samsung Internet' ? 'green.400' : 'gray.400'}
+                    />
+                    <Text color="gray.300">
+                      <strong>Samsung Internet</strong> (Best for Samsung devices) - ✅ Confirmed
+                      working
+                    </Text>
+                  </HStack>
+                </ListItem>
+                <ListItem>
+                  <HStack>
+                    <ListIcon
+                      as={browserInfo.name === 'Chrome' ? CheckCircleIcon : InfoIcon}
+                      color={browserInfo.name === 'Chrome' ? 'green.400' : 'gray.400'}
+                    />
+                    <Text color="gray.300">
+                      <strong>Chrome</strong> - ✅ Reliable
+                    </Text>
+                  </HStack>
+                </ListItem>
+                <ListItem>
+                  <HStack>
+                    <ListIcon
+                      as={browserInfo.name === 'Edge' ? CheckCircleIcon : InfoIcon}
+                      color={browserInfo.name === 'Edge' ? 'green.400' : 'gray.400'}
+                    />
+                    <Text color="gray.300">
+                      <strong>Edge</strong> - ✅ Reliable
+                    </Text>
+                  </HStack>
+                </ListItem>
+                <ListItem>
+                  <HStack>
+                    <ListIcon as={WarningIcon} color="yellow.400" />
+                    <Text color="gray.300">
+                      <strong>Firefox Mobile</strong> - ⚠️ Avoid (known passkey persistence issues)
+                    </Text>
+                  </HStack>
+                </ListItem>
+              </List>
+            </Box>
+          )}
+
+          {/* Storage Inspection Tools */}
+          <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+            <Heading size="sm" mb={3} color="#8c1c84">
+              Debug & Inspect Storage
+            </Heading>
+            <Text fontSize="sm" color="gray.400" mb={4}>
+              Inspect browser storage and activity logs
+            </Text>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <Button
+                leftIcon={<Icon as={FiHardDrive} />}
+                onClick={handleInspectLocalStorage}
+                isLoading={isInspectingLocalStorage}
+                loadingText="Inspecting..."
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Inspect LocalStorage
+              </Button>
+              <Button
+                leftIcon={<Icon as={FiDatabase} />}
+                onClick={handleInspectIndexedDB}
+                isLoading={isInspectingIndexedDB}
+                loadingText="Inspecting..."
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Inspect IndexedDB
+              </Button>
+              {/* TODO: remove logging
+              <Button
+                leftIcon={<Icon as={FiFileText} />}
+                onClick={handleLoadActivityLogs}
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Load Activity Logs
+              </Button>
+              <Button
+                leftIcon={<Icon as={FiDownload} />}
+                onClick={handleDownloadLogs}
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Download logs.md
+              </Button> */}
+            </SimpleGrid>
+          </Box>
+
+          {/* LocalStorage Results */}
+          {localStorageData.length > 0 && (
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
+              <HStack mb={4} justify="space-between">
+                <HStack>
+                  <Icon as={FiHardDrive} color="#8c1c84" boxSize={6} />
+                  <Heading size="md">LocalStorage Results</Heading>
+                </HStack>
+                <Badge colorScheme="purple">{localStorageData.length} items</Badge>
+              </HStack>
+              <VStack align="stretch" spacing={3}>
+                {localStorageData.map((item, index) => (
+                  <Box
+                    key={index}
+                    bg="gray.950"
+                    p={4}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor={item.type.startsWith('w3pk') ? 'purple.700' : 'gray.800'}
+                  >
+                    <VStack align="stretch" spacing={2}>
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" fontWeight="bold" color="white">
+                          {item.key}
+                        </Text>
+                        <HStack spacing={2}>
+                          {item.encrypted && (
+                            <Badge colorScheme="orange" fontSize="xs">
+                              Encrypted
+                            </Badge>
+                          )}
+                          <Badge
+                            colorScheme={item.type.startsWith('w3pk') ? 'purple' : 'gray'}
+                            fontSize="xs"
+                          >
+                            {item.type}
+                          </Badge>
+                        </HStack>
+                      </HStack>
+
+                      {item.parsedValue && (
+                        <Box
+                          bg="black"
+                          p={3}
+                          borderRadius="md"
+                          fontSize="xs"
+                          fontFamily="monospace"
+                          overflowX="auto"
+                        >
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                            {formatValue(maskSensitiveData(item.key, item.parsedValue))}
+                          </pre>
+                        </Box>
+                      )}
+
+                      {!item.parsedValue && (
+                        <Text fontSize="xs" color="gray.500" fontFamily="monospace">
+                          {item.value}
+                        </Text>
+                      )}
+                    </VStack>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+          )}
+
+          {/* IndexedDB Results */}
+          {indexedDBData.length > 0 && (
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
+              <HStack mb={4} justify="space-between">
+                <HStack>
+                  <Icon as={FiDatabase} color="#8c1c84" boxSize={6} />
+                  <Heading size="md">IndexedDB Results</Heading>
+                </HStack>
+                <Badge colorScheme="purple">{indexedDBData.length} database(s)</Badge>
+              </HStack>
+              <VStack align="stretch" spacing={4}>
+                {indexedDBData.map((db, dbIndex) => (
+                  <Box
+                    key={dbIndex}
+                    bg="gray.950"
+                    p={4}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor="purple.700"
+                  >
+                    <VStack align="stretch" spacing={3}>
+                      <HStack justify="space-between">
+                        <Text fontSize="md" fontWeight="bold" color="white">
+                          {db.name}
+                        </Text>
+                        <Badge colorScheme="purple" fontSize="xs">
+                          v{db.version}
+                        </Badge>
+                      </HStack>
+
+                      <Text fontSize="xs" color="gray.400">
+                        Stores: {db.stores.join(', ')}
+                      </Text>
+
+                      <Text fontSize="xs" color="gray.400">
+                        Records: {db.records.length}
+                      </Text>
+
+                      {db.records.length > 0 && (
+                        <VStack align="stretch" spacing={2} mt={2}>
+                          {db.records.map((record, recordIndex) => (
+                            <Box
+                              key={recordIndex}
+                              bg="black"
+                              p={3}
+                              borderRadius="md"
+                              border="1px solid"
+                              borderColor="gray.900"
+                            >
+                              <Text fontSize="xs" color="gray.400" mb={2}>
+                                Store: {record.store} | Key: {record.key}
+                              </Text>
+                              <Box fontSize="xs" fontFamily="monospace" overflowX="auto">
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                  {formatValue(maskSensitiveData(record.key, record.value))}
+                                </pre>
+                              </Box>
+                            </Box>
+                          ))}
+                        </VStack>
+                      )}
+                    </VStack>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+          )}
+
+          {/* TODO: remove logging - Activity Logs Results */}
+          {activityLogs && (
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
+              <HStack mb={4} justify="space-between">
+                <HStack>
+                  <Icon as={FiFileText} color="#8c1c84" boxSize={6} />
+                  <Heading size="md">Activity Logs</Heading>
+                </HStack>
+                <Badge colorScheme="purple">
+                  {
+                    activityLogs.split('\n').filter(line => line.trim().startsWith('- Date:'))
+                      .length
+                  }{' '}
+                  entries
+                </Badge>
+              </HStack>
+              <Box
+                bg="black"
+                p={4}
+                borderRadius="md"
+                fontSize="sm"
+                fontFamily="monospace"
+                overflowX="auto"
+                whiteSpace="pre-wrap"
+                color="gray.300"
+              >
+                {activityLogs || 'No activity logs found'}
+              </Box>
+            </Box>
+          )}
+
+          {/* Login Prompt */}
+          <Box bg="whiteAlpha.50" p={6} borderRadius="md" textAlign="center">
+            <Alert status="info" bg="transparent" color="blue.200">
+              <AlertIcon />
+              <AlertDescription>
+                Please log in or register to access your settings and manage your wallet.
+              </AlertDescription>
             </Alert>
           </Box>
         </VStack>
@@ -1112,6 +1652,183 @@ const SettingsPage = () => {
             <Button colorScheme="red" onClick={confirmDeleteAccount}>
               Remove Account
             </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* LocalStorage Inspection Modal */}
+      <Modal
+        isOpen={showLocalStorageModal}
+        onClose={() => setShowLocalStorageModal(false)}
+        size="xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay bg="blackAlpha.600" />
+        <ModalContent bg="gray.800" color="white" maxH="80vh">
+          <ModalHeader>
+            <HStack>
+              <Icon as={FiHardDrive} color="#8c1c84" />
+              <Text>LocalStorage Inspection</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Text fontSize="sm" color="gray.400">
+                Found {localStorageData.length} items in localStorage
+              </Text>
+
+              {localStorageData.length === 0 ? (
+                <Box bg="gray.900" p={4} borderRadius="md" textAlign="center">
+                  <Text color="gray.500">No data found</Text>
+                </Box>
+              ) : (
+                localStorageData.map((item, index) => (
+                  <Box
+                    key={index}
+                    bg="gray.900"
+                    p={4}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor={item.type.startsWith('w3pk') ? 'purple.600' : 'gray.700'}
+                  >
+                    <VStack align="stretch" spacing={2}>
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" fontWeight="bold" color="white">
+                          {item.key}
+                        </Text>
+                        <HStack spacing={2}>
+                          {item.encrypted && (
+                            <Badge colorScheme="orange" fontSize="xs">
+                              Encrypted
+                            </Badge>
+                          )}
+                          <Badge
+                            colorScheme={item.type.startsWith('w3pk') ? 'purple' : 'gray'}
+                            fontSize="xs"
+                          >
+                            {item.type}
+                          </Badge>
+                        </HStack>
+                      </HStack>
+
+                      {item.parsedValue && (
+                        <Box
+                          bg="gray.950"
+                          p={3}
+                          borderRadius="md"
+                          fontSize="xs"
+                          fontFamily="monospace"
+                          overflowX="auto"
+                        >
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                            {formatValue(maskSensitiveData(item.key, item.parsedValue))}
+                          </pre>
+                        </Box>
+                      )}
+
+                      {!item.parsedValue && (
+                        <Text fontSize="xs" color="gray.500" fontFamily="monospace">
+                          {item.value}
+                        </Text>
+                      )}
+                    </VStack>
+                  </Box>
+                ))
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={() => setShowLocalStorageModal(false)}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* IndexedDB Inspection Modal */}
+      <Modal
+        isOpen={showIndexedDBModal}
+        onClose={() => setShowIndexedDBModal(false)}
+        size="xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay bg="blackAlpha.600" />
+        <ModalContent bg="gray.800" color="white" maxH="80vh">
+          <ModalHeader>
+            <HStack>
+              <Icon as={FiDatabase} color="#8c1c84" />
+              <Text>IndexedDB Inspection</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Text fontSize="sm" color="gray.400">
+                Found {indexedDBData.length} database(s)
+              </Text>
+
+              {indexedDBData.length === 0 ? (
+                <Box bg="gray.900" p={4} borderRadius="md" textAlign="center">
+                  <Text color="gray.500">No w3pk-related databases found</Text>
+                </Box>
+              ) : (
+                indexedDBData.map((db, dbIndex) => (
+                  <Box
+                    key={dbIndex}
+                    bg="gray.900"
+                    p={4}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor="purple.600"
+                  >
+                    <VStack align="stretch" spacing={3}>
+                      <HStack justify="space-between">
+                        <Text fontSize="md" fontWeight="bold" color="white">
+                          {db.name}
+                        </Text>
+                        <Badge colorScheme="purple" fontSize="xs">
+                          v{db.version}
+                        </Badge>
+                      </HStack>
+
+                      <Text fontSize="xs" color="gray.400">
+                        Stores: {db.stores.join(', ')}
+                      </Text>
+
+                      <Text fontSize="xs" color="gray.400">
+                        Records: {db.records.length}
+                      </Text>
+
+                      {db.records.length > 0 && (
+                        <VStack align="stretch" spacing={2} mt={2}>
+                          {db.records.map((record, recordIndex) => (
+                            <Box
+                              key={recordIndex}
+                              bg="gray.950"
+                              p={3}
+                              borderRadius="md"
+                              border="1px solid"
+                              borderColor="gray.800"
+                            >
+                              <Text fontSize="xs" color="gray.400" mb={2}>
+                                Store: {record.store} | Key: {record.key}
+                              </Text>
+                              <Box fontSize="xs" fontFamily="monospace" overflowX="auto">
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                  {formatValue(maskSensitiveData(record.key, record.value))}
+                                </pre>
+                              </Box>
+                            </Box>
+                          ))}
+                        </VStack>
+                      )}
+                    </VStack>
+                  </Box>
+                ))
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={() => setShowIndexedDBModal(false)}>Close</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
