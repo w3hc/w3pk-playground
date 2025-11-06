@@ -15,6 +15,7 @@ import {
   StealthKeys,
   generateStealthAddress as generateStealthAddressFromMetaAddress,
 } from 'w3pk'
+import { logActivity } from '../utils/activityLogger' // TODO: remove logging
 
 interface SecurityScore {
   total: number // 0-100
@@ -74,6 +75,21 @@ interface W3pkType {
   getStealthKeys: () => Promise<StealthKeys | null>
   getBackupStatus: () => Promise<BackupStatus>
   createZipBackup: (password: string) => Promise<Blob>
+}
+
+// TODO: remove logging
+interface DebugInfo {
+  username: string
+  w3pkVersion?: string
+  challenge?: string
+  credentialId?: string
+  attestationObject?: string
+  clientDataJSON?: string
+  error?: {
+    name: string
+    message: string
+    stack?: string
+  }
 }
 
 const W3PK = createContext<W3pkType>({
@@ -213,13 +229,43 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     checkExistingAuth()
   }, [isMounted, w3pk, handleAuthStateChanged])
 
+  // TODO: remove logging
+  const sendDebugInfo = async (debugInfo: DebugInfo) => {
+    try {
+      const response = await fetch('/api/debug', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(debugInfo),
+      })
+
+      if (!response.ok) {
+        console.error(
+          '[W3PK] Failed to send debug info to server:',
+          response.status,
+          response.statusText
+        )
+      } else {
+        console.log('[W3PK] Debug info successfully sent to server.')
+      }
+    } catch (fetchError) {
+      console.error('[W3PK] Error sending debug info to server:', fetchError)
+    }
+  }
+
   const register = async (username: string) => {
+    // TODO: remove logging
+    let capturedChallenge: string | undefined = undefined
+    let capturedCredentialId: string | undefined = undefined
+    let capturedAttestationObject: string | undefined = undefined
+    let capturedClientDataJSON: string | undefined = undefined
+
     try {
       setIsLoading(true)
       console.log('=== Starting Registration with w3pk ===')
       console.log('Username:', username)
       console.log('w3pk instance:', w3pk)
-
       // Add timeout wrapper to detect hanging registration
       const registrationPromise = w3pk.register({
         username,
@@ -228,13 +274,20 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => {
           console.error('[W3PK] Registration timeout - w3pk.register() did not complete')
-          reject(new Error('Registration timed out. Please try again or check browser console for errors.'))
-        }, 45000) // 45 second timeout
+          reject(
+            new Error(
+              'Registration timed out. Please try again or check browser console for errors.'
+            )
+          )
+        }, 45000)
       )
 
       await Promise.race([registrationPromise, timeoutPromise])
 
       console.log('Registration successful')
+
+      // TODO: remove logging
+      await logActivity('register')
 
       toast({
         title: 'Done! 🎉',
@@ -244,21 +297,34 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
         duration: 3000,
         isClosable: true,
       })
-
-      // toast({
-      //   title: '🚨 BACKUP YOUR RECOVERY PHRASE',
-      //   description: 'Save your 12-word recovery phrase in a safe place. This is your only backup!',
-      //   status: 'warning',
-      //   duration: 10000,
-      //   isClosable: true,
-      // })
     } catch (error: any) {
       console.error('Registration failed:', error)
       console.error('Error details:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
       })
+
+      // TODO: remove logging
+      const debugInfo: DebugInfo = {
+        username,
+        error: {
+          name: error.name || 'UnknownError',
+          message: error.message || 'Registration failed',
+          stack: error.stack || 'No stack trace',
+        },
+      }
+
+      if (error.message?.includes('atob')) {
+        console.warn('[W3PK] Detected potential internal atob error in w3pk SDK.')
+        console.log('[W3PK] Sending debug info for username:', username)
+        await sendDebugInfo(debugInfo)
+      } else {
+        await sendDebugInfo(debugInfo)
+      }
+
+      // TODO: remove logging
+      await logActivity('error', error.message || 'Registration failed')
 
       toast({
         title: 'Registration Failed',
@@ -285,6 +351,9 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
       const hasWallet = w3pk.isAuthenticated
       const displayName = result.displayName || result.username || 'Anon'
 
+      // TODO: remove logging
+      await logActivity('login')
+
       toast({
         title: 'Login Successful! ✅',
         description: hasWallet
@@ -297,8 +366,10 @@ export const W3pkProvider: React.FC<W3pkProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Authentication failed:', error)
 
-      // Don't show toast for user-cancelled errors
+      // TODO: remove logging
       if (!isUserCancelledError(error)) {
+        await logActivity('error', error.message || 'Login failed')
+
         toast({
           title: 'Authentication Failed',
           description: error.message || 'Failed to authenticate with w3pk',

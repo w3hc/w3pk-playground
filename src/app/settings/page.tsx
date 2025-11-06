@@ -46,7 +46,17 @@ import {
   DownloadIcon,
   LockIcon,
 } from '@chakra-ui/icons'
-import { FiShield, FiCheckCircle, FiCloud, FiUsers, FiKey, FiDownload, FiDatabase, FiHardDrive } from 'react-icons/fi'
+import {
+  FiShield,
+  FiCheckCircle,
+  FiCloud,
+  FiUsers,
+  FiKey,
+  FiDownload,
+  FiDatabase,
+  FiHardDrive,
+  FiFileText,
+} from 'react-icons/fi'
 import { useW3PK } from '../../../src/context/W3PK'
 import Spinner from '../../../src/components/Spinner'
 import PasswordModal from '../../components/PasswordModal'
@@ -59,6 +69,7 @@ import {
   type LocalStorageItem,
   type IndexedDBInfo,
 } from '../../../src/utils/storageInspection'
+import { getActivityLogs, downloadLogsAsMarkdown } from '../../../src/utils/activityLogger' // TODO: remove logging
 
 interface StoredAccount {
   username: string
@@ -83,6 +94,7 @@ const SettingsPage = () => {
   const [isInspectingIndexedDB, setIsInspectingIndexedDB] = useState(false)
   const [showLocalStorageModal, setShowLocalStorageModal] = useState(false)
   const [showIndexedDBModal, setShowIndexedDBModal] = useState(false)
+  const [activityLogs, setActivityLogs] = useState<string>('')
 
   const toast = useToast()
   const { isAuthenticated, user, getBackupStatus, createZipBackup, logout } = useW3PK()
@@ -140,6 +152,54 @@ const SettingsPage = () => {
       })
     } finally {
       setIsInspectingIndexedDB(false)
+    }
+  }
+
+  // TODO: remove logging
+  const handleLoadActivityLogs = () => {
+    const logs = getActivityLogs()
+    setActivityLogs(logs)
+
+    if (logs) {
+      const lineCount = logs.split('\n').filter(line => line.trim().startsWith('- Date:')).length
+      toast({
+        title: 'Activity Logs Loaded',
+        description: `Found ${lineCount} activity log(s). Scroll down to see results.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } else {
+      toast({
+        title: 'No Activity Logs',
+        description: 'No activity has been logged yet.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  // TODO: remove logging
+  const handleDownloadLogs = () => {
+    try {
+      downloadLogsAsMarkdown()
+      toast({
+        title: 'Logs Downloaded',
+        description: 'logs.md has been downloaded',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error) {
+      console.error('Error downloading logs:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to download logs',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
     }
   }
 
@@ -486,18 +546,12 @@ const SettingsPage = () => {
           )}
 
           {/* Storage Inspection Tools */}
-          <Box
-            bg="gray.900"
-            p={6}
-            borderRadius="lg"
-            border="1px solid"
-            borderColor="gray.700"
-          >
+          <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
             <Heading size="sm" mb={3} color="#8c1c84">
               Debug & Inspect Storage
             </Heading>
             <Text fontSize="sm" color="gray.400" mb={4}>
-              Inspect browser storage to debug w3pk-related data
+              Inspect browser storage and activity logs
             </Text>
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
               <Button
@@ -522,18 +576,31 @@ const SettingsPage = () => {
               >
                 Inspect IndexedDB
               </Button>
+              {/* TODO: remove logging
+              <Button
+                leftIcon={<Icon as={FiFileText} />}
+                onClick={handleLoadActivityLogs}
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Load Activity Logs
+              </Button>
+              <Button
+                leftIcon={<Icon as={FiDownload} />}
+                onClick={handleDownloadLogs}
+                variant="outline"
+                colorScheme="purple"
+                size="sm"
+              >
+                Download logs.md
+              </Button> */}
             </SimpleGrid>
           </Box>
 
           {/* LocalStorage Results */}
           {localStorageData.length > 0 && (
-            <Box
-              bg="gray.900"
-              p={6}
-              borderRadius="lg"
-              border="1px solid"
-              borderColor="purple.600"
-            >
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
               <HStack mb={4} justify="space-between">
                 <HStack>
                   <Icon as={FiHardDrive} color="#8c1c84" boxSize={6} />
@@ -600,13 +667,7 @@ const SettingsPage = () => {
 
           {/* IndexedDB Results */}
           {indexedDBData.length > 0 && (
-            <Box
-              bg="gray.900"
-              p={6}
-              borderRadius="lg"
-              border="1px solid"
-              borderColor="purple.600"
-            >
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
               <HStack mb={4} justify="space-between">
                 <HStack>
                   <Icon as={FiDatabase} color="#8c1c84" boxSize={6} />
@@ -669,6 +730,37 @@ const SettingsPage = () => {
                   </Box>
                 ))}
               </VStack>
+            </Box>
+          )}
+
+          {/* TODO: remove logging - Activity Logs Results */}
+          {activityLogs && (
+            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
+              <HStack mb={4} justify="space-between">
+                <HStack>
+                  <Icon as={FiFileText} color="#8c1c84" boxSize={6} />
+                  <Heading size="md">Activity Logs</Heading>
+                </HStack>
+                <Badge colorScheme="purple">
+                  {
+                    activityLogs.split('\n').filter(line => line.trim().startsWith('- Date:'))
+                      .length
+                  }{' '}
+                  entries
+                </Badge>
+              </HStack>
+              <Box
+                bg="black"
+                p={4}
+                borderRadius="md"
+                fontSize="sm"
+                fontFamily="monospace"
+                overflowX="auto"
+                whiteSpace="pre-wrap"
+                color="gray.300"
+              >
+                {activityLogs || 'No activity logs found'}
+              </Box>
             </Box>
           )}
 
@@ -1598,9 +1690,7 @@ const SettingsPage = () => {
                     p={4}
                     borderRadius="md"
                     border="1px solid"
-                    borderColor={
-                      item.type.startsWith('w3pk') ? 'purple.600' : 'gray.700'
-                    }
+                    borderColor={item.type.startsWith('w3pk') ? 'purple.600' : 'gray.700'}
                   >
                     <VStack align="stretch" spacing={2}>
                       <HStack justify="space-between">
@@ -1614,9 +1704,7 @@ const SettingsPage = () => {
                             </Badge>
                           )}
                           <Badge
-                            colorScheme={
-                              item.type.startsWith('w3pk') ? 'purple' : 'gray'
-                            }
+                            colorScheme={item.type.startsWith('w3pk') ? 'purple' : 'gray'}
                             fontSize="xs"
                           >
                             {item.type}
@@ -1634,9 +1722,7 @@ const SettingsPage = () => {
                           overflowX="auto"
                         >
                           <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                            {formatValue(
-                              maskSensitiveData(item.key, item.parsedValue)
-                            )}
+                            {formatValue(maskSensitiveData(item.key, item.parsedValue))}
                           </pre>
                         </Box>
                       )}
@@ -1726,15 +1812,9 @@ const SettingsPage = () => {
                               <Text fontSize="xs" color="gray.400" mb={2}>
                                 Store: {record.store} | Key: {record.key}
                               </Text>
-                              <Box
-                                fontSize="xs"
-                                fontFamily="monospace"
-                                overflowX="auto"
-                              >
+                              <Box fontSize="xs" fontFamily="monospace" overflowX="auto">
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                                  {formatValue(
-                                    maskSensitiveData(record.key, record.value)
-                                  )}
+                                  {formatValue(maskSensitiveData(record.key, record.value))}
                                 </pre>
                               </Box>
                             </Box>
