@@ -66,6 +66,8 @@ import {
   inspectIndexedDB,
   formatValue,
   maskSensitiveData,
+  clearLocalStorageItem,
+  clearIndexedDBRecord,
   type LocalStorageItem,
   type IndexedDBInfo,
 } from '../../../src/utils/storageInspection'
@@ -95,6 +97,7 @@ const SettingsPage = () => {
   const [showLocalStorageModal, setShowLocalStorageModal] = useState(false)
   const [showIndexedDBModal, setShowIndexedDBModal] = useState(false)
   const [activityLogs, setActivityLogs] = useState<string>('')
+
 
   const toast = useToast()
   const { isAuthenticated, user, getBackupStatus, createZipBackup, logout } = useW3PK()
@@ -202,6 +205,71 @@ const SettingsPage = () => {
       })
     }
   }
+
+  const handleClearLocalStorageItem = async (key: string) => {
+    const success = clearLocalStorageItem(key)
+    if (success) {
+      // Refresh the localStorage data
+      const updatedData = localStorageData.filter(item => item.key !== key)
+      setLocalStorageData(updatedData)
+
+      toast({
+        title: 'Item Cleared',
+        description: `Removed "${key}" from localStorage`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: `Failed to clear "${key}"`,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
+  const handleClearIndexedDBRecord = async (
+    dbName: string,
+    storeName: string,
+    key: string
+  ) => {
+    const success = await clearIndexedDBRecord(dbName, storeName, key)
+    if (success) {
+      // Refresh the IndexedDB data
+      const updatedData = indexedDBData.map(db => {
+        if (db.name === dbName) {
+          return {
+            ...db,
+            records: db.records.filter(
+              record => !(record.store === storeName && record.key === key)
+            ),
+          }
+        }
+        return db
+      })
+      setIndexedDBData(updatedData)
+
+      toast({
+        title: 'Record Cleared',
+        description: `Removed record from ${dbName}/${storeName}`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Failed to clear record',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
+    }
+  }
+
 
   // Load accounts from localStorage
   useEffect(() => {
@@ -620,7 +688,7 @@ const SettingsPage = () => {
                   >
                     <VStack align="stretch" spacing={2}>
                       <HStack justify="space-between">
-                        <Text fontSize="sm" fontWeight="bold" color="white">
+                        <Text fontSize="sm" fontWeight="bold" color="white" flex={1}>
                           {item.key}
                         </Text>
                         <HStack spacing={2}>
@@ -635,6 +703,14 @@ const SettingsPage = () => {
                           >
                             {item.type}
                           </Badge>
+                          <IconButton
+                            aria-label="Clear item"
+                            icon={<DeleteIcon />}
+                            size="xs"
+                            colorScheme="red"
+                            variant="ghost"
+                            onClick={() => handleClearLocalStorageItem(item.key)}
+                          />
                         </HStack>
                       </HStack>
 
@@ -714,9 +790,21 @@ const SettingsPage = () => {
                               border="1px solid"
                               borderColor="gray.900"
                             >
-                              <Text fontSize="xs" color="gray.400" mb={2}>
-                                Store: {record.store} | Key: {record.key}
-                              </Text>
+                              <HStack justify="space-between" mb={2}>
+                                <Text fontSize="xs" color="gray.400">
+                                  Store: {record.store} | Key: {record.key}
+                                </Text>
+                                <IconButton
+                                  aria-label="Clear record"
+                                  icon={<DeleteIcon />}
+                                  size="xs"
+                                  colorScheme="red"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleClearIndexedDBRecord(db.name, record.store, record.key)
+                                  }
+                                />
+                              </HStack>
                               <Box fontSize="xs" fontFamily="monospace" overflowX="auto">
                                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
                                   {formatValue(maskSensitiveData(record.key, record.value))}
@@ -873,7 +961,8 @@ const SettingsPage = () => {
   }
 
   return (
-    <Container maxW="container.lg" py={10}>
+    <>
+      <Container maxW="container.lg" py={10}>
       <VStack spacing={8} align="stretch">
         <Box textAlign="center">
           <Heading as="h1" size="2xl" mb={4}>
@@ -1832,7 +1921,9 @@ const SettingsPage = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </Container>
+
+      </Container>
+    </>
   )
 }
 
