@@ -70,11 +70,14 @@ export default function Header() {
     const trimmedInput = input.trim()
 
     // Check overall format and length (3-50 chars)
-    const formatValid = /^[a-zA-Z0-9_]{3,50}$/.test(trimmedInput)
+    // Alphanumeric, underscore, and hyphen allowed
+    // Must start and end with alphanumeric
+    const formatValid =
+      /^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(trimmedInput) &&
+      trimmedInput.length >= 3 &&
+      trimmedInput.length <= 50
 
-    // TODO: remove logging - Check for specific length that causes the bug (9 chars)
-    const lengthOk = trimmedInput.length !== 9
-    return formatValid && lengthOk
+    return formatValid
   }
 
   const handleLogin = async () => {
@@ -96,26 +99,14 @@ export default function Header() {
 
     const isValid = validateUsername(username)
     if (!isValid) {
-      // TODO: remove logging
-      if (username.trim().length === 9 && /^[a-zA-Z0-9_]{9}$/.test(username.trim())) {
-        toast({
-          title: 'Invalid Username',
-          description:
-            'Username cannot be 9 characters long due to a temporary restriction. Please choose a username with 3-8 or 10-50 characters.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        })
-      } else {
-        toast({
-          title: 'Invalid Username',
-          description:
-            'Username must be 3-50 characters long and contain only letters, numbers, and underscores. Hyphens and other special characters are not allowed.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        })
-      }
+      // toast({
+      //   title: 'Invalid Username',
+      //   description:
+      //     'Username must be 3-50 characters long and contain only letters, numbers, underscores, and hyphens. It must start and end with a letter or number.',
+      //   status: 'error',
+      //   duration: 5000,
+      //   isClosable: true,
+      // })
       setIsUsernameInvalid(true)
       return
     }
@@ -340,8 +331,8 @@ export default function Header() {
                 />
                 {isUsernameInvalid && username.trim() && (
                   <FormErrorMessage>
-                    Username must be 3-50 characters long and contain only letters, numbers, and
-                    underscores.
+                    Username must be 3-50 characters long and contain only letters, numbers,
+                    underscores, and hyphens. It must start and end with a letter or number.
                   </FormErrorMessage>
                 )}
               </FormControl>

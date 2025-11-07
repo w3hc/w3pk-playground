@@ -14,7 +14,6 @@ import {
   AlertIcon,
   AlertDescription,
   Code,
-  Divider,
   Tabs,
   TabList,
   TabPanels,
@@ -55,7 +54,6 @@ import {
   FiDownload,
   FiDatabase,
   FiHardDrive,
-  FiFileText,
 } from 'react-icons/fi'
 import { useW3PK } from '../../../src/context/W3PK'
 import Spinner from '../../../src/components/Spinner'
@@ -71,7 +69,6 @@ import {
   type LocalStorageItem,
   type IndexedDBInfo,
 } from '../../../src/utils/storageInspection'
-import { getActivityLogs, downloadLogsAsMarkdown } from '../../../src/utils/activityLogger' // TODO: remove logging
 
 interface StoredAccount {
   username: string
@@ -96,7 +93,6 @@ const SettingsPage = () => {
   const [isInspectingIndexedDB, setIsInspectingIndexedDB] = useState(false)
   const [showLocalStorageModal, setShowLocalStorageModal] = useState(false)
   const [showIndexedDBModal, setShowIndexedDBModal] = useState(false)
-  const [activityLogs, setActivityLogs] = useState<string>('')
 
 
   const toast = useToast()
@@ -158,53 +154,6 @@ const SettingsPage = () => {
     }
   }
 
-  // TODO: remove logging
-  const handleLoadActivityLogs = () => {
-    const logs = getActivityLogs()
-    setActivityLogs(logs)
-
-    if (logs) {
-      const lineCount = logs.split('\n').filter(line => line.trim().startsWith('- Date:')).length
-      toast({
-        title: 'Activity Logs Loaded',
-        description: `Found ${lineCount} activity log(s). Scroll down to see results.`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
-    } else {
-      toast({
-        title: 'No Activity Logs',
-        description: 'No activity has been logged yet.',
-        status: 'info',
-        duration: 3000,
-        isClosable: true,
-      })
-    }
-  }
-
-  // TODO: remove logging
-  const handleDownloadLogs = () => {
-    try {
-      downloadLogsAsMarkdown()
-      toast({
-        title: 'Logs Downloaded',
-        description: 'logs.md has been downloaded',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
-    } catch (error) {
-      console.error('Error downloading logs:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to download logs',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      })
-    }
-  }
 
   const handleClearLocalStorageItem = async (key: string) => {
     const success = clearLocalStorageItem(key)
@@ -644,25 +593,6 @@ const SettingsPage = () => {
               >
                 Inspect IndexedDB
               </Button>
-              {/* TODO: remove logging
-              <Button
-                leftIcon={<Icon as={FiFileText} />}
-                onClick={handleLoadActivityLogs}
-                variant="outline"
-                colorScheme="purple"
-                size="sm"
-              >
-                Load Activity Logs
-              </Button>
-              <Button
-                leftIcon={<Icon as={FiDownload} />}
-                onClick={handleDownloadLogs}
-                variant="outline"
-                colorScheme="purple"
-                size="sm"
-              >
-                Download logs.md
-              </Button> */}
             </SimpleGrid>
           </Box>
 
@@ -818,37 +748,6 @@ const SettingsPage = () => {
                   </Box>
                 ))}
               </VStack>
-            </Box>
-          )}
-
-          {/* TODO: remove logging - Activity Logs Results */}
-          {activityLogs && (
-            <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="purple.600">
-              <HStack mb={4} justify="space-between">
-                <HStack>
-                  <Icon as={FiFileText} color="#8c1c84" boxSize={6} />
-                  <Heading size="md">Activity Logs</Heading>
-                </HStack>
-                <Badge colorScheme="purple">
-                  {
-                    activityLogs.split('\n').filter(line => line.trim().startsWith('- Date:'))
-                      .length
-                  }{' '}
-                  entries
-                </Badge>
-              </HStack>
-              <Box
-                bg="black"
-                p={4}
-                borderRadius="md"
-                fontSize="sm"
-                fontFamily="monospace"
-                overflowX="auto"
-                whiteSpace="pre-wrap"
-                color="gray.300"
-              >
-                {activityLogs || 'No activity logs found'}
-              </Box>
             </Box>
           )}
 
