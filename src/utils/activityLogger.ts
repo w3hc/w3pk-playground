@@ -63,14 +63,6 @@ export async function logActivity(
         message = 'Unknown activity'
     }
 
-    // Create log entry
-    const logEntry = `- Date: ${dateTimeString}\n- Browser: ${browserString}\n- Status: ${message}\n\n`
-
-    // Store in localStorage to persist across sessions
-    const existingLogs = localStorage.getItem('w3pk_activity_logs') || ''
-    const updatedLogs = existingLogs + logEntry
-    localStorage.setItem('w3pk_activity_logs', updatedLogs)
-
     // Send to server-side API to append to logs.md
     try {
       await fetch('/api/log-activity', {
@@ -86,7 +78,6 @@ export async function logActivity(
       })
     } catch (apiError) {
       console.error('Failed to send log to server:', apiError)
-      // Continue anyway - we still have localStorage
     }
 
     // Also log to console for debugging
@@ -101,40 +92,3 @@ export async function logActivity(
   }
 }
 
-/**
- * Gets all logged activities from localStorage
- */
-export function getActivityLogs(): string {
-  return localStorage.getItem('w3pk_activity_logs') || ''
-}
-
-/**
- * Clears all logged activities
- */
-export function clearActivityLogs(): void {
-  localStorage.removeItem('w3pk_activity_logs')
-}
-
-/**
- * Downloads the logs as a markdown file
- */
-export function downloadLogsAsMarkdown(): void {
-  const logs = getActivityLogs()
-
-  if (!logs) {
-    console.warn('No logs to download')
-    return
-  }
-
-  const content = `# w3pk Activity Logs\n\n${logs}`
-  const blob = new Blob([content], { type: 'text/markdown' })
-  const url = URL.createObjectURL(blob)
-
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'logs.md'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}

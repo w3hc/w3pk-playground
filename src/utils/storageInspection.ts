@@ -243,3 +243,126 @@ export function maskSensitiveData(key: string, value: any): any {
 
   return value
 }
+
+/**
+ * Clears a single localStorage item
+ */
+export function clearLocalStorageItem(key: string): boolean {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return false
+  }
+
+  try {
+    localStorage.removeItem(key)
+    return true
+  } catch (error) {
+    console.error(`Error clearing localStorage item ${key}:`, error)
+    return false
+  }
+}
+
+/**
+ * Clears a single record from IndexedDB
+ */
+export async function clearIndexedDBRecord(
+  dbName: string,
+  storeName: string,
+  key: string
+): Promise<boolean> {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return false
+  }
+
+  try {
+    const db = await openDatabase(dbName)
+    const transaction = db.transaction(storeName, 'readwrite')
+    const store = transaction.objectStore(storeName)
+
+    await new Promise<void>((resolve, reject) => {
+      const request = store.delete(key)
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+
+    db.close()
+    return true
+  } catch (error) {
+    console.error(`Error clearing IndexedDB record ${dbName}/${storeName}/${key}:`, error)
+    return false
+  }
+}
+
+/**
+ * Clears all w3pk-related data from localStorage
+ */
+export function clearAllW3pkLocalStorage(): { cleared: string[], failed: string[] } {
+  const cleared: string[] = []
+  const failed: string[] = []
+
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return { cleared, failed }
+  }
+
+  const keys = Object.keys(localStorage)
+  const w3pkKeys = keys.filter(key =>
+    key.includes('w3pk') || key.includes('passkey')
+  )
+
+  for (const key of w3pkKeys) {
+    try {
+      localStorage.removeItem(key)
+      cleared.push(key)
+    } catch (error) {
+      console.error(`Error clearing localStorage key ${key}:`, error)
+      failed.push(key)
+    }
+  }
+
+  return { cleared, failed }
+}
+
+/**
+ * Clears all w3pk-related IndexedDB databases
+ */
+export async function clearAllW3pkIndexedDB(): Promise<{ cleared: string[], failed: string[] }> {
+  const cleared: string[] = []
+  const failed: string[] = []
+
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return { cleared, failed }
+  }
+
+  try {
+    const databases = await indexedDB.databases()
+
+    for (const dbInfo of databases) {
+      if (!dbInfo.name) continue
+
+      // Only clear w3pk-related databases
+      if (dbInfo.name.toLowerCase().includes('web3') ||
+          dbInfo.name.toLowerCase().includes('passkey') ||
+          dbInfo.name.toLowerCase().includes('w3pk')) {
+
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const request = indexedDB.deleteDatabase(dbInfo.name!)
+            request.onsuccess = () => resolve()
+            request.onerror = () => reject(request.error)
+            request.onblocked = () => {
+              console.warn(`Deletion of ${dbInfo.name} is blocked`)
+              reject(new Error('Deletion blocked'))
+            }
+          })
+          cleared.push(dbInfo.name)
+        } catch (error) {
+          console.error(`Error clearing IndexedDB ${dbInfo.name}:`, error)
+          failed.push(dbInfo.name)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error getting databases:', error)
+  }
+
+  return { cleared, failed }
+}
