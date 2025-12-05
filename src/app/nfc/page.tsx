@@ -6,21 +6,17 @@ import {
   Box,
   Heading,
   Text,
-  Button,
-  Card,
-  CardHeader,
-  CardBody,
   HStack,
   Code,
-  Divider,
-  useToast,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
+  Separator,
 } from '@chakra-ui/react'
+import { Card } from '@/components/ui/card'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { toaster } from '@/components/ui/toaster'
 import { useState, useEffect } from 'react'
 import { FaSatellite, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import Link from 'next/link'
 
 interface NFCDebugInfo {
   // Browser & Environment
@@ -69,7 +65,6 @@ interface NFCDebugInfo {
 }
 
 export default function NFCDebugPage() {
-  const toast = useToast()
   const [debugInfo, setDebugInfo] = useState<NFCDebugInfo | null>(null)
   const [isNFCSupported, setIsNFCSupported] = useState<boolean>(false)
   const [nfcTestResult, setNfcTestResult] = useState<string>('')
@@ -250,10 +245,10 @@ export default function NFCDebugPage() {
       const writer = new NDEFWriter()
       const testUrl = 'https://example.com/test'
 
-      toast({
+      toaster.create({
         title: 'Ready to Write',
         description: 'Hold an NFC tag near your device now',
-        status: 'info',
+        type: 'info',
         duration: 10000,
       })
 
@@ -262,10 +257,10 @@ export default function NFCDebugPage() {
       })
 
       setNfcTestResult('✅ NFC Write Test PASSED - Tag was written successfully!')
-      toast({
+      toaster.create({
         title: '✅ Success!',
         description: 'NFC tag written successfully',
-        status: 'success',
+        type: 'success',
         duration: 5000,
       })
     } catch (error: any) {
@@ -283,10 +278,10 @@ export default function NFCDebugPage() {
       }
 
       setNfcTestResult(`❌ NFC Write Test FAILED: ${errorMessage}`)
-      toast({
+      toaster.create({
         title: 'Test Failed',
         description: errorMessage,
-        status: 'error',
+        type: 'error',
         duration: 5000,
       })
     } finally {
@@ -306,10 +301,10 @@ export default function NFCDebugPage() {
 
       const reader = new NDEFReader()
 
-      toast({
+      toaster.create({
         title: 'Ready to Read',
         description: 'Hold an NFC tag near your device now',
-        status: 'info',
+        type: 'info',
         duration: 10000,
       })
 
@@ -318,10 +313,10 @@ export default function NFCDebugPage() {
       reader.onreading = (event: any) => {
         console.log('NFC tag read:', event)
         setNfcTestResult(`✅ NFC Read Test PASSED - Tag detected: ${event.serialNumber}`)
-        toast({
+        toaster.create({
           title: '✅ Tag Read!',
           description: `Serial: ${event.serialNumber}`,
-          status: 'success',
+          type: 'success',
           duration: 5000,
         })
         setIsTesting(false)
@@ -351,10 +346,10 @@ export default function NFCDebugPage() {
       }
 
       setNfcTestResult(`❌ NFC Read Test FAILED: ${errorMessage}`)
-      toast({
+      toaster.create({
         title: 'Test Failed',
         description: errorMessage,
-        status: 'error',
+        type: 'error',
         duration: 5000,
       })
       setIsTesting(false)
@@ -374,10 +369,10 @@ export default function NFCDebugPage() {
 
       const reader = new NDEFReader()
 
-      toast({
+      toaster.create({
         title: 'Permission Request',
         description: 'Please allow NFC access when prompted',
-        status: 'info',
+        type: 'info',
         duration: 5000,
       })
 
@@ -385,10 +380,10 @@ export default function NFCDebugPage() {
       await reader.scan()
 
       // If we get here, permission was granted
-      toast({
+      toaster.create({
         title: '✅ Permission Granted!',
         description: 'NFC access has been allowed. Refreshing page...',
-        status: 'success',
+        type: 'success',
         duration: 3000,
       })
 
@@ -410,10 +405,10 @@ export default function NFCDebugPage() {
           'NDEFReader not available. Enable Chrome flags or check system NFC settings.'
       }
 
-      toast({
+      toaster.create({
         title: 'Permission Request Failed',
         description: errorMessage,
-        status: 'error',
+        type: 'error',
         duration: 8000,
       })
     } finally {
@@ -439,7 +434,7 @@ export default function NFCDebugPage() {
             </Text>
           </>
         ) : (
-          <Text fontSize="sm" fontWeight="bold" fontFamily="mono" isTruncated maxW="250px">
+          <Text fontSize="sm" fontWeight="bold" fontFamily="mono" truncate maxW="250px">
             {String(value)}
           </Text>
         )}
@@ -457,7 +452,7 @@ export default function NFCDebugPage() {
 
   return (
     <Container maxW="container.md" py={10}>
-      <VStack spacing={8} align="stretch">
+      <VStack gap={8} align="stretch">
         {/* Header */}
         <Box textAlign="center">
           <Heading as="h1" size="xl" mb={2}>
@@ -467,15 +462,15 @@ export default function NFCDebugPage() {
         </Box>
 
         {/* Overall Status */}
-        <Card bg={isNFCSupported ? 'green.900' : 'red.900'} borderColor="gray.700">
-          <CardBody>
-            <HStack justify="center" spacing={4}>
+        <Card.Root bg={isNFCSupported ? 'green.900' : 'red.900'} borderColor="gray.700">
+          <Card.Body>
+            <HStack justify="center" gap={4}>
               {isNFCSupported ? (
                 <FaCheckCircle size={32} color="lightgreen" />
               ) : (
                 <FaTimesCircle size={32} color="salmon" />
               )}
-              <VStack align="start" spacing={0}>
+              <VStack align="start" gap={0}>
                 <Heading size="md">NFC is {isNFCSupported ? 'SUPPORTED' : 'NOT SUPPORTED'}</Heading>
                 <Text fontSize="sm" color="gray.300">
                   {isNFCSupported
@@ -484,16 +479,16 @@ export default function NFCDebugPage() {
                 </Text>
               </VStack>
             </HStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* Requirements Check */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">Requirements Check</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={3} align="stretch">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
               <InfoRow
                 label="Secure Context (HTTPS)"
                 value={debugInfo.isSecureContext}
@@ -506,23 +501,23 @@ export default function NFCDebugPage() {
             </VStack>
 
             {!isNFCSupported && debugInfo.hasNDEFReader && !debugInfo.hasNDEFWriter && (
-              <Alert
+              <Alert.Root
                 status={
                   debugInfo.nfcPermissionState === 'granted' ? 'error' : 'warning'
                 }
                 mt={4}
                 borderRadius="md"
               >
-                <AlertIcon />
+                <Alert.Indicator />
                 <Box flex="1">
-                  <AlertTitle>NDEFWriter Not Available</AlertTitle>
-                  <AlertDescription fontSize="sm">
+                  <Alert.Title>NDEFWriter Not Available</Alert.Title>
+                  <Alert.Description fontSize="sm">
                     {debugInfo.nfcPermissionState === 'granted' ? (
                       <>
                         <Text fontWeight="bold" mb={2} color="red.300">
                           Permission is granted, but NDEFWriter is still missing!
                         </Text>
-                        <VStack align="stretch" spacing={3}>
+                        <VStack align="stretch" gap={3}>
                           <Text>
                             This is NOT a permission issue. Most likely causes:
                             <br />
@@ -542,7 +537,7 @@ export default function NFCDebugPage() {
                         <Text fontWeight="bold" mb={2}>
                           Most likely cause: Site permissions not granted for NFC
                         </Text>
-                        <VStack align="stretch" spacing={3}>
+                        <VStack align="stretch" gap={3}>
                           <Text>
                             Go to Chrome → Settings → Site Settings → NFC and make sure{' '}
                             <Code fontSize="xs">{debugInfo.hostname}</Code> is allowed.
@@ -551,10 +546,10 @@ export default function NFCDebugPage() {
                             colorScheme="orange"
                             size="sm"
                             onClick={requestNFCPermission}
-                            isLoading={isRequestingPermission}
+                            loading={isRequestingPermission}
                             loadingText="Requesting..."
-                            leftIcon={<FaSatellite />}
                           >
+                            <FaSatellite />
                             Request NFC Permission
                           </Button>
                           <Text fontSize="xs" color="gray.400">
@@ -565,32 +560,32 @@ export default function NFCDebugPage() {
                         </VStack>
                       </>
                     )}
-                  </AlertDescription>
+                  </Alert.Description>
                 </Box>
-              </Alert>
+              </Alert.Root>
             )}
 
             {!isNFCSupported && !debugInfo.hasNDEFReader && !debugInfo.hasNDEFWriter && (
-              <Alert status="warning" mt={4} borderRadius="md">
-                <AlertIcon />
+              <Alert.Root status="warning" mt={4} borderRadius="md">
+                <Alert.Indicator />
                 <Box>
-                  <AlertTitle>Requirements Not Met</AlertTitle>
-                  <AlertDescription fontSize="sm">
+                  <Alert.Title>Requirements Not Met</Alert.Title>
+                  <Alert.Description fontSize="sm">
                     Web NFC requires: HTTPS + Android + Chrome + NFC hardware
-                  </AlertDescription>
+                  </Alert.Description>
                 </Box>
-              </Alert>
+              </Alert.Root>
             )}
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* Browser & Environment Info */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">Browser & Environment</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={3} align="stretch">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
               <InfoRow label="Protocol" value={debugInfo.protocol} />
               <InfoRow label="Hostname" value={debugInfo.hostname} />
               <InfoRow label="Platform" value={debugInfo.platform} />
@@ -607,52 +602,52 @@ export default function NFCDebugPage() {
                 value={`${debugInfo.screenWidth}x${debugInfo.screenHeight}`}
               />
             </VStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* Device Detection */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">Device & Browser Detection</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={3} align="stretch">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
               <InfoRow label="Android" value={debugInfo.isAndroid} />
               <InfoRow label="iOS" value={debugInfo.isIOS} />
               <InfoRow label="Chrome" value={debugInfo.isChrome} />
               <InfoRow label="Firefox" value={debugInfo.isFirefox} />
               <InfoRow label="Safari" value={debugInfo.isSafari} />
             </VStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* NFC API Info */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">NFC API Availability</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={3} align="stretch">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
               <InfoRow label="NDEFReader" value={debugInfo.hasNDEFReader} />
               <InfoRow label="NDEFWriter" value={debugInfo.hasNDEFWriter} />
               <InfoRow label="NDEFRecord" value={debugInfo.hasNDEFRecord} />
               <InfoRow label="Web NFC Available" value={debugInfo.hasWebNFC || false} />
-              <Divider />
+              <Separator />
               <InfoRow
                 label="NFC Permission"
                 value={debugInfo.nfcPermissionState || debugInfo.nfcPermissionError || 'Unknown'}
               />
             </VStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* Deeper NFC API Inspection */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">NFC API Deep Inspection</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={3} align="stretch">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
               <Box>
                 <Text fontSize="sm" color="gray.400" mb={1}>
                   NDEFReader Type:
@@ -720,15 +715,15 @@ export default function NFCDebugPage() {
                 </Code>
               </Box>
             </VStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* User Agent */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="md">User Agent</Heading>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <Code
               p={3}
               borderRadius="md"
@@ -740,81 +735,80 @@ export default function NFCDebugPage() {
             >
               {debugInfo.userAgent}
             </Code>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* NFC Tests */}
         {isNFCSupported && (
-          <Card bg="gray.800" borderColor="gray.700">
-            <CardHeader>
+          <Card.Root bg="gray.800" borderColor="gray.700">
+            <Card.Header>
               <Heading size="md">NFC Function Tests</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
+            </Card.Header>
+            <Card.Body>
+              <VStack gap={4} align="stretch">
                 <Text fontSize="sm" color="gray.400">
                   Test actual NFC read/write functionality:
                 </Text>
 
-                <HStack spacing={4}>
+                <HStack gap={4}>
                   <Button
                     colorScheme="blue"
                     onClick={testNFCRead}
-                    isLoading={isTesting}
+                    loading={isTesting}
                     loadingText="Scanning..."
-                    leftIcon={<FaSatellite />}
                     flex={1}
                   >
+                    <FaSatellite />
                     Test NFC Read
                   </Button>
                   <Button
                     colorScheme="green"
                     onClick={testNFCWrite}
-                    isLoading={isTesting}
+                    loading={isTesting}
                     loadingText="Writing..."
-                    leftIcon={<FaSatellite />}
                     flex={1}
                   >
+                    <FaSatellite />
                     Test NFC Write
                   </Button>
                 </HStack>
 
                 {nfcTestResult && (
-                  <Alert
+                  <Alert.Root
                     status={nfcTestResult.includes('PASSED') ? 'success' : 'error'}
                     borderRadius="md"
                   >
-                    <AlertIcon />
+                    <Alert.Indicator />
                     <Text fontSize="sm">{nfcTestResult}</Text>
-                  </Alert>
+                  </Alert.Root>
                 )}
 
                 <Text fontSize="xs" color="gray.500">
                   Note: You must have an NFC tag nearby to test these features.
                 </Text>
               </VStack>
-            </CardBody>
-          </Card>
+            </Card.Body>
+          </Card.Root>
         )}
 
         {/* Quick Links */}
         <Box textAlign="center">
-          <HStack justify="center" spacing={4}>
-            <Button as="a" href="/" variant="link" size="sm" color="gray.500">
-              ← Home
-            </Button>
-            <Button as="a" href="/tx" variant="link" size="sm" color="gray.500">
-              Payment Page →
-            </Button>
+          <HStack justify="center" gap={4}>
+            <Link href="/">
+              <Button variant="plain" size="sm" color="gray.500">
+                ← Payment Page
+              </Button>
+            </Link>
           </HStack>
         </Box>
 
         {/* Additional Notes */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
+        <Card.Root bg="gray.800" borderColor="gray.700">
+          <Card.Header>
             <Heading size="sm">NFC Support Notes</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={2} align="stretch" fontSize="sm" color="gray.400">
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={2} align="stretch" fontSize="sm" color="gray.400">
               <Text>• Web NFC API is only supported on Android devices with Chrome 89+</Text>
               <Text>• HTTPS or localhost is required for security</Text>
               <Text>• iOS does not support Web NFC (iOS only allows native apps)</Text>
@@ -823,29 +817,29 @@ export default function NFCDebugPage() {
                 • Browser must have NFC permission granted (check chrome://flags/#enable-web-nfc)
               </Text>
             </VStack>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
 
         {/* Troubleshooting - Only show if NDEFWriter is missing but Reader is available */}
         {debugInfo.hasNDEFReader && !debugInfo.hasNDEFWriter && (
-          <Card bg="orange.900" borderColor="orange.700">
-            <CardHeader>
+          <Card.Root bg="orange.900" borderColor="orange.700">
+            <Card.Header>
               <Heading size="sm">🔧 Troubleshooting NDEFWriter Issue</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={3} align="stretch" fontSize="sm">
+            </Card.Header>
+            <Card.Body>
+              <VStack gap={3} align="stretch" fontSize="sm">
                 <Text fontWeight="bold">
                   Your device has NDEFReader but not NDEFWriter. Try these steps:
                 </Text>
 
                 {debugInfo.nfcPermissionState === 'granted' && (
-                  <Alert status="info" borderRadius="md" size="sm">
-                    <AlertIcon />
+                  <Alert.Root status="info" borderRadius="md" size="sm">
+                    <Alert.Indicator />
                     <Text fontSize="xs">
                       ✅ NFC Permission is already granted. The issue is likely Chrome flags or
                       device restrictions.
                     </Text>
-                  </Alert>
+                  </Alert.Root>
                 )}
 
                 <Box>
@@ -875,11 +869,11 @@ export default function NFCDebugPage() {
                         colorScheme="orange"
                         size="sm"
                         onClick={requestNFCPermission}
-                        isLoading={isRequestingPermission}
+                        loading={isRequestingPermission}
                         loadingText="Requesting..."
-                        leftIcon={<FaSatellite />}
                         mt={2}
                       >
+                        <FaSatellite />
                         Request NFC Permission Now
                       </Button>
                       <Text color="gray.400" fontSize="xs" mt={2}>
@@ -947,8 +941,8 @@ export default function NFCDebugPage() {
                   </Text>
                 </Box>
 
-                <Alert status="warning" size="sm" borderRadius="md">
-                  <AlertIcon />
+                <Alert.Root status="warning" size="sm" borderRadius="md">
+                  <Alert.Indicator />
                   <Box>
                     <Text fontSize="xs" fontWeight="bold" mb={1}>
                       ⚠️ If Chrome flags are missing or you can&apos;t add sites to NFC settings:
@@ -975,10 +969,10 @@ export default function NFCDebugPage() {
                       it.
                     </Text>
                   </Box>
-                </Alert>
+                </Alert.Root>
               </VStack>
-            </CardBody>
-          </Card>
+            </Card.Body>
+          </Card.Root>
         )}
       </VStack>
     </Container>

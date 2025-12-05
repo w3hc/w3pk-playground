@@ -6,49 +6,29 @@ import {
   Box,
   Heading,
   Text,
-  Button,
-  FormControl,
-  FormLabel,
   Input,
   HStack,
   Badge,
-  useToast,
-  Tooltip,
-  Card,
-  CardHeader,
-  CardBody,
   IconButton,
   Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  useDisclosure,
 } from '@chakra-ui/react'
+import { Button } from '@/components/ui/button'
+import { toaster } from '@/components/ui/toaster'
+import { Dialog, Portal } from '@/components/ui/dialog'
+import { Tooltip } from '@/components/ui/tooltip'
+import { NumberInput } from '@/components/ui/number-input'
+import { Field } from '@/components/ui/field'
 import { useW3PK } from '@/context/W3PK'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import { FiSend, FiCopy, FiRefreshCw } from 'react-icons/fi'
 import { QRCodeSVG } from 'qrcode.react'
-import { TransactionHistory } from '@/components/TransactionHistory'
+import { TransactionHistory } from '../../components/TransactionHistory'
 import { SafeStorage, Transaction } from '@/lib/safeStorage'
 import { useSafeTransactionHistory } from '@/hooks/useSafeTransactionHistory'
 import { EURO_TOKEN_ADDRESS, ERC20_ABI } from '@/lib/constants'
 import { FaSatellite, FaQrcode } from 'react-icons/fa'
-
-import {
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-} from '@chakra-ui/react'
+import { brandColors } from '@/theme'
 
 interface SessionKey {
   sessionKeyAddress: string
@@ -64,7 +44,6 @@ interface SessionKey {
 
 export default function PaymentPage() {
   const { isAuthenticated, user, deriveWallet } = useW3PK()
-  const toast = useToast()
 
   // State
   const [safeAddress, setSafeAddress] = useState<string | null>(null)
@@ -84,15 +63,14 @@ export default function PaymentPage() {
   const [amount, setAmount] = useState('1')
   const [paymentRequestDetected, setPaymentRequestDetected] = useState(false)
 
-  const {
-    isOpen: isRequestModalOpen,
-    onOpen: onRequestModalOpen,
-    onClose: onRequestModalClose,
-  } = useDisclosure()
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+  const onRequestModalOpen = () => setIsRequestModalOpen(true)
+  const onRequestModalClose = () => setIsRequestModalOpen(false)
   const [requestAmount, setRequestAmount] = useState<string>('')
   const [isQRGenerated, setIsQRGenerated] = useState<boolean>(false)
   const [qrData, setQrData] = useState<string>('')
   const [isWebNFCSupported, setIsWebNFCSupported] = useState(false)
+  const [qrSize, setQrSize] = useState(200)
 
   // Refs to access latest values in WebSocket handler without causing re-renders
   const requestAmountRef = useRef<string>('')
@@ -112,13 +90,16 @@ export default function PaymentPage() {
     isRequestModalOpenRef.current = isRequestModalOpen
   }, [isRequestModalOpen])
 
-  // Check NFC support after mount (client-side only)
+  // Check NFC support and set QR size after mount (client-side only)
   useEffect(() => {
     const checkNFCSupport = () => {
       if (typeof window === 'undefined') {
         setIsWebNFCSupported(false)
         return
       }
+
+      // Set QR size based on screen width
+      setQrSize(window.innerWidth < 768 ? 150 : 200)
 
       // Check if running on HTTPS or localhost (required for NFC)
       const isSecureContext = window.isSecureContext
@@ -145,14 +126,23 @@ export default function PaymentPage() {
     }
 
     checkNFCSupport()
+
+    // Update QR size on window resize
+    const handleResize = () => {
+      setQrSize(window.innerWidth < 768 ? 150 : 200)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const writeNFC = async (url: string) => {
     if (!isWebNFCSupported) {
-      toast({
+      toaster.create({
         title: 'NFC Write Not Available',
-        description: 'NFC writing requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Visit /nfc to troubleshoot.',
-        status: 'warning',
+        description:
+          'NFC writing requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Visit /nfc to troubleshoot.',
+        type: 'warning',
         duration: 5000,
       })
       return
@@ -173,10 +163,10 @@ export default function PaymentPage() {
         records: [{ recordType: 'url', data: url }],
       })
 
-      toast({
+      toaster.create({
         title: '✅ NFC Written!',
         description: 'Hold the tag near your phone to pay.',
-        status: 'success',
+        type: 'success',
         duration: 3000,
       })
     } catch (error: any) {
@@ -195,10 +185,10 @@ export default function PaymentPage() {
         message = 'No NFC tag detected. Try again.'
       }
 
-      toast({
+      toaster.create({
         title: 'NFC Write Failed',
         description: message,
-        status: 'error',
+        type: 'error',
         duration: 5000,
       })
     }
@@ -383,10 +373,10 @@ export default function PaymentPage() {
         if (update.status === 'verified') {
           // Skip adding to pending if it's a self-send (already added by outgoing WebSocket)
           if (!isSelfSend) {
-            toast({
+            toaster.create({
               title: '✅ Paid!',
               description: `You received ${amountEth} EUR from ${update.from?.slice(0, 10)}...`,
-              status: 'success',
+              type: 'success',
               duration: 5000,
               // containerStyle: {
               //   bg: 'blue.500',
@@ -508,32 +498,31 @@ export default function PaymentPage() {
 
   const sendTransaction = async () => {
     if (isCooldown) {
-      toast({
+      toaster.create({
         title: 'Please wait',
         description:
           'A transaction is already being processed or recently sent. Please wait before sending another.',
-        status: 'info',
+        type: 'info',
         duration: 3000,
-        isClosable: true,
       })
       return
     }
 
     if (!safeAddress || !sessionKey || !recipient || !amount) {
-      toast({
+      toaster.create({
         title: 'Error',
         description: 'Please fill in all fields and create a session key first',
-        status: 'error',
+        type: 'error',
         duration: 5000,
       })
       return
     }
 
     if (isSessionKeyExpired) {
-      toast({
+      toaster.create({
         title: 'Session Key Expired',
         description: 'Please create a new session key on the /safe page',
-        status: 'error',
+        type: 'error',
         duration: 5000,
       })
       return
@@ -589,8 +578,8 @@ export default function PaymentPage() {
         throw new Error('User address not available')
       }
 
-      // Derive the session key wallet to sign the transaction
-      const sessionKeyWallet = await deriveWallet(sessionKey.sessionKeyIndex)
+      // Derive the session key wallet to sign the transaction (using YOLO mode)
+      const sessionKeyWallet = await deriveWallet('YOLO', 'BONUS')
 
       if (!sessionKeyWallet.privateKey) {
         throw new Error('Session key private key not available')
@@ -601,8 +590,8 @@ export default function PaymentPage() {
       const sessionKeySigner = new ethers.Wallet(sessionKeyWallet.privateKey)
       const signature = await sessionKeySigner.signMessage(message)
 
-      // Get derived wallet for signing (wallet index 0)
-      const wallet0 = await deriveWallet(0)
+      // Get derived wallet for signing (using YOLO mode with SHEBAM tag)
+      const wallet0 = await deriveWallet('YOLO', 'SHEBAM')
 
       if (!wallet0.privateKey) {
         throw new Error('Owner wallet private key not available')
@@ -639,10 +628,10 @@ export default function PaymentPage() {
           console.log('WebSocket update:', update)
 
           if (update.status === 'verified') {
-            toast({
+            toaster.create({
               title: '✅ Sent!',
               description: `Verified in ${update.duration?.toFixed(2)}s`,
-              status: 'success',
+              type: 'success',
               duration: 4000,
               // containerStyle: {
               //   bg: 'green.500',
@@ -728,10 +717,10 @@ export default function PaymentPage() {
 
         ws.onerror = error => {
           console.error('WebSocket error:', error)
-          toast({
+          toaster.create({
             title: 'Connection Error',
             description: 'Lost connection to transaction status',
-            status: 'warning',
+            type: 'warning',
             duration: 5000,
           })
           setIsSending(false)
@@ -746,14 +735,11 @@ export default function PaymentPage() {
 
         // Show completion toasts
         if (data.durations?.verified) {
-          toast({
+          toaster.create({
             title: '✅ Sent!',
             description: `Verified in ${data.durations.verified.toFixed(2)}s`,
-            status: 'success',
+            type: 'success',
             duration: 4000,
-            containerStyle: {
-              bg: 'green.500',
-            },
           })
         }
 
@@ -782,10 +768,10 @@ export default function PaymentPage() {
         throw new Error(data.error || 'Transaction failed')
       }
     } catch (error: any) {
-      toast({
+      toaster.create({
         title: 'Transaction Failed',
         description: error.message,
-        status: 'error',
+        type: 'error',
         duration: 8000,
       })
       setIsSending(false)
@@ -806,22 +792,21 @@ export default function PaymentPage() {
       setIsQRGenerated(true)
     } catch (error) {
       console.error('Error generating QR data:', error)
-      toast({
+      toaster.create({
         title: 'Error',
         description: 'Failed to generate QR code data.',
-        status: 'error',
+        type: 'error',
         duration: 3000,
-        isClosable: true,
       })
     }
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    toast({
+    toaster.create({
       title: 'Copied!',
       description: 'Address copied to clipboard',
-      status: 'success',
+      type: 'success',
       duration: 2000,
     })
   }
@@ -831,7 +816,6 @@ export default function PaymentPage() {
       <Container maxW="container.md" py={20}>
         <Box textAlign="center">
           <Heading mb={4}>Please Login</Heading>
-          <Text color="gray.400">You need to be authenticated to use payment features</Text>
         </Box>
       </Container>
     )
@@ -845,8 +829,13 @@ export default function PaymentPage() {
           <Text color="gray.400" mb={6}>
             Please deploy a Safe wallet first on the /safe page
           </Text>
-          <Button as="a" href="/safe" colorScheme="purple">
-            Go to Safe Dashboard
+          <Button
+            asChild
+            bg={brandColors.accent}
+            color="white"
+            _hover={{ bg: brandColors.accent, opacity: 0.8 }}
+          >
+            <a href="/safe">Go to Safe Dashboard</a>
           </Button>
         </Box>
       </Container>
@@ -854,8 +843,8 @@ export default function PaymentPage() {
   }
 
   return (
-    <Container maxW="container.md" py={10}>
-      <VStack spacing={8} align="stretch">
+    <Container maxW="container.md" py={20}>
+      <VStack gap={8} align="stretch">
         {/* Header */}
         <Box textAlign="center">
           <Heading as="h1" size="xl" mb={2}>
@@ -865,204 +854,195 @@ export default function PaymentPage() {
         </Box>
 
         {/* Send Block */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
-            <HStack justify="space-between">
-              <Heading size="md">Send EUR</Heading>
-              <HStack>
-                <Text fontSize="sm" color="gray.400">
-                  Balance:
-                </Text>
-                {isLoadingBalance ? (
-                  <HStack spacing={1}>
-                    <Text fontFamily="mono" fontWeight="bold">
-                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
-                    </Text>
-                    <IconButton
-                      aria-label="Refresh balance"
-                      icon={<FiRefreshCw />}
-                      size="xs"
-                      variant="ghost"
-                    />
-                  </HStack>
-                ) : (
-                  <HStack spacing={1}>
-                    <Text fontFamily="mono" fontWeight="bold">
-                      {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
-                    </Text>
-                    <IconButton
-                      aria-label="Refresh balance"
-                      icon={<FiRefreshCw />}
-                      size="xs"
-                      variant="ghost"
-                      onClick={loadBalance}
-                    />
-                  </HStack>
-                )}
-              </HStack>
-            </HStack>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={4} align="stretch">
-              {/* Session Key Status */}
-              {sessionKey ? (
-                <Box>
-                  <HStack justify="space-between" mb={2}>
-                    <Text fontSize="sm" color="gray.400">
-                      Session Key:
-                    </Text>
-                    <Badge colorScheme={isSessionKeyExpired ? 'red' : 'green'}>
-                      {isSessionKeyExpired ? 'Expired' : 'Active'}
-                    </Badge>
-                  </HStack>
-                  <Text fontSize="sm" color="gray.400">
-                    Expires: {new Date(sessionKey.expiresAt).toLocaleString()}
+        <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+          <HStack justify="space-between" mb={4}>
+            <Heading size="md">Send EUR</Heading>
+            <HStack>
+              <Text fontSize="sm" color="gray.400">
+                Balance:
+              </Text>
+              {isLoadingBalance ? (
+                <HStack gap={1}>
+                  <Text fontFamily="mono" fontWeight="bold">
+                    {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
                   </Text>
-                  {isSessionKeyExpired && (
-                    <Alert status="error" mt={3} borderRadius="md">
-                      <AlertIcon />
-                      <Box>
-                        <AlertTitle>Session Key Expired</AlertTitle>
-                        <AlertDescription fontSize="sm">
-                          Go to /safe to create a new session key
-                        </AlertDescription>
-                      </Box>
-                    </Alert>
-                  )}
-                </Box>
+                  <IconButton aria-label="Refresh balance" size="xs" variant="ghost">
+                    <FiRefreshCw />
+                  </IconButton>
+                </HStack>
               ) : (
-                <Alert status="warning" borderRadius="md">
-                  <AlertIcon />
-                  <Box>
-                    <AlertTitle>No Session Key</AlertTitle>
-                    <AlertDescription fontSize="sm">
-                      Create a session key on /safe to send transactions
-                    </AlertDescription>
-                  </Box>
-                </Alert>
-              )}
-
-              {/* Send Form */}
-              <FormControl>
-                <FormLabel>Recipient Address</FormLabel>
-                <Input
-                  placeholder="0x..."
-                  value={recipient}
-                  onChange={e => setRecipient(e.target.value)}
-                  fontFamily="mono"
-                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
-                />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Amount (EUR)</FormLabel>
-                <NumberInput
-                  value={amount}
-                  onChange={setAmount}
-                  min={0}
-                  precision={2}
-                  step={0.001}
-                  isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
-                >
-                  <NumberInputField
-                    type="text"
-                    placeholder="1"
-                    fontFamily="mono"
-                    onWheel={e => e.currentTarget.blur()}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                {paymentRequestDetected && (
-                  <Text mt={3} fontSize="md" color="red">
-                    Incoming payment request detected. Would you like to proceed?
+                <HStack gap={1}>
+                  <Text fontFamily="mono" fontWeight="bold">
+                    {parseFloat(ethers.formatEther(safeBalance)).toFixed(2)}
                   </Text>
-                )}
-              </FormControl>
-
-              <HStack spacing={4}>
-                <Button
-                  colorScheme="purple"
-                  size="lg"
-                  onClick={sendTransaction}
-                  isLoading={isSending}
-                  loadingText="Sending..."
-                  leftIcon={<FiSend />}
-                  isDisabled={
-                    !recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown
-                  }
-                >
-                  Send
-                </Button>
-                {!paymentRequestDetected && (
-                  <Button
-                    colorScheme="blue"
-                    variant="outline"
-                    size="sm"
-                    onClick={onRequestModalOpen}
-                    isDisabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                  <IconButton
+                    aria-label="Refresh balance"
+                    size="xs"
+                    variant="ghost"
+                    onClick={loadBalance}
                   >
-                    Request Payment
-                  </Button>
+                    <FiRefreshCw />
+                  </IconButton>
+                </HStack>
+              )}
+            </HStack>
+          </HStack>
+          <VStack gap={4} align="stretch">
+            {/* Session Key Status */}
+            {sessionKey ? (
+              <Box>
+                <HStack justify="space-between" mb={2}>
+                  <Text fontSize="sm" color="gray.400">
+                    Session Key:
+                  </Text>
+                  <Badge colorPalette={isSessionKeyExpired ? 'red' : 'green'}>
+                    {isSessionKeyExpired ? 'Expired' : 'Active'}
+                  </Badge>
+                </HStack>
+                <Text fontSize="sm" color="gray.400">
+                  Expires: {new Date(sessionKey.expiresAt).toLocaleString()}
+                </Text>
+                {isSessionKeyExpired && (
+                  <Alert.Root status="error" mt={3} borderRadius="md">
+                    <Alert.Indicator />
+                    <Box>
+                      <Alert.Title>Session Key Expired</Alert.Title>
+                      <Alert.Description fontSize="sm">
+                        Go to /safe to create a new session key
+                      </Alert.Description>
+                    </Box>
+                  </Alert.Root>
                 )}
-              </HStack>
+              </Box>
+            ) : (
+              <Alert.Root status="warning" borderRadius="md">
+                <Alert.Indicator />
+                <Box>
+                  <Alert.Title>No Session Key</Alert.Title>
+                  <Alert.Description fontSize="sm">
+                    Create a session key on /safe to send transactions
+                  </Alert.Description>
+                </Box>
+              </Alert.Root>
+            )}
 
-              {insufficientBalance && (
-                <Text fontSize="2xs" color="red">
-                  Insufficient balance
+            {/* Send Form */}
+            <Field label="Recipient Address">
+              <Input
+                placeholder="0x..."
+                value={recipient}
+                onChange={e => setRecipient(e.target.value)}
+                fontFamily="mono"
+                disabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+              />
+            </Field>
+
+            <Field label="Amount (EUR)">
+              <NumberInput.Root
+                value={amount}
+                onValueChange={e => setAmount(e.value)}
+                min={0}
+                step={0.001}
+                disabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+              >
+                <NumberInput.Field
+                  type="text"
+                  placeholder="1"
+                  fontFamily="mono"
+                  onWheel={(e: any) => e.currentTarget.blur()}
+                />
+                <NumberInput.Control>
+                  <NumberInput.IncrementTrigger />
+                  <NumberInput.DecrementTrigger />
+                </NumberInput.Control>
+              </NumberInput.Root>
+              {paymentRequestDetected && (
+                <Text mt={3} fontSize="md" color="red">
+                  Incoming payment request detected. Would you like to proceed?
                 </Text>
               )}
-            </VStack>
-          </CardBody>
-        </Card>
+            </Field>
+
+            <HStack gap={4}>
+              <Button
+                bg={brandColors.accent}
+                color="white"
+                _hover={{ bg: brandColors.accent, opacity: 0.8 }}
+                size="lg"
+                onClick={sendTransaction}
+                loading={isSending}
+                disabled={!recipient || !amount || !sessionKey || isSessionKeyExpired || isCooldown}
+              >
+                <FiSend />
+                Send
+              </Button>
+              {!paymentRequestDetected && (
+                <Button
+                  bg="blue.600"
+                  color="white"
+                  _hover={{ bg: 'blue.500' }}
+                  variant="outline"
+                  size="sm"
+                  onClick={onRequestModalOpen}
+                  disabled={!sessionKey || isSessionKeyExpired || isSending || isCooldown}
+                >
+                  Request Payment
+                </Button>
+              )}
+            </HStack>
+
+            {insufficientBalance && (
+              <Text fontSize="2xs" color="red">
+                Insufficient balance
+              </Text>
+            )}
+          </VStack>
+        </Box>
 
         {/* Receive Block */}
-        <Card bg="gray.800" borderColor="gray.700">
-          <CardHeader>
-            <Heading size="md">Receive EUR</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={4} align="stretch">
-              <Text color="gray.400" fontSize="sm">
-                Send EUR to your Safe wallet address:
+        <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+          <Heading size="md" mb={4}>
+            Receive EUR
+          </Heading>
+          <VStack gap={4} align="stretch">
+            <Text color="gray.400" fontSize="sm">
+              Send EUR to your Safe wallet address:
+            </Text>
+
+            {/* QR Code */}
+            <Box bg="white" p={4} borderRadius="md" alignSelf="center">
+              <QRCodeSVG value={safeAddress || ''} size={200} level="H" />
+            </Box>
+
+            {/* Address */}
+            <Box>
+              <Text fontSize="sm" color="gray.400" mb={2}>
+                Safe Address:
               </Text>
+              <HStack>
+                <Input
+                  value={safeAddress || ''}
+                  readOnly
+                  fontFamily="mono"
+                  fontSize="sm"
+                  bg="gray.900"
+                />
+                <IconButton
+                  aria-label="Copy address"
+                  onClick={() => copyToClipboard(safeAddress || '')}
+                  colorScheme="purple"
+                  variant="outline"
+                >
+                  <FiCopy />
+                </IconButton>
+              </HStack>
+            </Box>
 
-              {/* QR Code */}
-              <Box bg="white" p={4} borderRadius="md" alignSelf="center">
-                <QRCodeSVG value={safeAddress} size={200} level="H" />
-              </Box>
-
-              {/* Address */}
-              <Box>
-                <Text fontSize="sm" color="gray.400" mb={2}>
-                  Safe Address:
-                </Text>
-                <HStack>
-                  <Input
-                    value={safeAddress}
-                    isReadOnly
-                    fontFamily="mono"
-                    fontSize="sm"
-                    bg="gray.900"
-                  />
-                  <IconButton
-                    aria-label="Copy address"
-                    icon={<FiCopy />}
-                    onClick={() => copyToClipboard(safeAddress)}
-                    colorScheme="purple"
-                    variant="outline"
-                  />
-                </HStack>
-              </Box>
-
-              <Text fontSize="sm" color="gray.500" textAlign="center">
-                Scan QR code or copy address to receive funds
-              </Text>
-            </VStack>
-          </CardBody>
-        </Card>
+            <Text fontSize="sm" color="gray.500" textAlign="center">
+              Scan QR code or copy address to receive funds
+            </Text>
+          </VStack>
+        </Box>
 
         {/* Transaction History */}
         <TransactionHistory
@@ -1078,123 +1058,161 @@ export default function PaymentPage() {
 
         {/* Quick Link */}
         <Box textAlign="center">
-          <Button as="a" href="/safe" variant="link" size="sm" color="gray.500">
-            Go to Safe Dashboard →
+          <Button asChild variant="plain" size="sm" color="gray.500">
+            <a href="/safe">Go to Safe Dashboard →</a>
           </Button>
         </Box>
       </VStack>
 
-      <Modal isOpen={isRequestModalOpen} onClose={handleRequestModalClose}>
-        <ModalOverlay />
-        <ModalContent bg="gray.800" borderColor="gray.700" color="white">
-          <ModalHeader>Request Payment</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {!isQRGenerated ? (
-              <FormControl isRequired>
-                <FormLabel>Amount to Request (EUR)</FormLabel>
-                <NumberInput
-                  value={requestAmount}
-                  onChange={setRequestAmount}
-                  min={0}
-                  precision={2}
-                  step={0.001}
-                >
-                  <NumberInputField
-                    type="text"
-                    placeholder="0.00"
-                    fontFamily="mono"
-                    onWheel={e => e.currentTarget.blur()}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <FormLabel mt={2}>Token: EUR</FormLabel>
-              </FormControl>
-            ) : (
-              <VStack spacing={4} align="center">
-                <Text textAlign="center">Scan this QR code to send payment</Text>
-                {qrData ? (
-                  <Box p={4} bg="white" borderRadius="md">
-                    <QRCodeSVG value={qrData} size={200} />
-                  </Box>
+      <Dialog.Root
+        open={isRequestModalOpen}
+        onOpenChange={e => !e.open && handleRequestModalClose()}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content
+              bg="gray.800"
+              borderColor="gray.700"
+              color="white"
+              p={{ base: 4, md: 6 }}
+              maxW={{ base: '90vw', md: 'md' }}
+              maxH={{ base: '90vh', md: 'auto' }}
+              overflow="auto"
+            >
+              <Dialog.Header pb={{ base: 2, md: 4 }}>
+                <Dialog.Title fontSize={{ base: 'lg', md: 'xl' }}>Request Payment</Dialog.Title>
+                <Dialog.CloseTrigger />
+              </Dialog.Header>
+              <Dialog.Body py={{ base: 2, md: 4 }}>
+                {!isQRGenerated ? (
+                  <>
+                    <Field label="Amount to Request (EUR)" required>
+                      <NumberInput.Root
+                        value={requestAmount}
+                        onValueChange={e => setRequestAmount(e.value)}
+                        min={0}
+                        step={0.001}
+                      >
+                        <NumberInput.Field
+                          type="text"
+                          placeholder="0.00"
+                          fontFamily="mono"
+                          onWheel={(e: any) => e.currentTarget.blur()}
+                        />
+                        <NumberInput.Control>
+                          <NumberInput.IncrementTrigger />
+                          <NumberInput.DecrementTrigger />
+                        </NumberInput.Control>
+                      </NumberInput.Root>
+                    </Field>
+                  </>
                 ) : (
-                  <Text>Loading QR code...</Text>
+                  <VStack gap={4} align="center">
+                    <Text textAlign="center" fontSize={{ base: 'sm', md: 'md' }}>
+                      Scan this QR code to send payment
+                    </Text>
+                    {qrData ? (
+                      <Box p={{ base: 2, md: 4 }} bg="white" borderRadius="md">
+                        <QRCodeSVG value={qrData} size={qrSize} />
+                      </Box>
+                    ) : (
+                      <Text>Loading QR code...</Text>
+                    )}
+                    <Text
+                      textAlign="center"
+                      fontSize={{ base: 'xs', md: 'sm' }}
+                      color="gray.400"
+                      wordBreak="break-all"
+                      maxW="full"
+                    >
+                      {qrData}
+                    </Text>
+                  </VStack>
                 )}
-                <Text textAlign="center" fontSize="sm" color="gray.400" wordBreak="break-all">
-                  {qrData}
-                </Text>
-              </VStack>
-            )}
-          </ModalBody>
+              </Dialog.Body>
 
-          <ModalFooter>
-            {!isQRGenerated ? (
-              <>
-                <Button
-                  colorScheme="blue"
-                  mr={3}
-                  onClick={handleRequestPayment}
-                  isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
-                  leftIcon={<FaQrcode />}
-                >
-                  Generate QR
-                </Button>
-
-                {isWebNFCSupported ? (
-                  <Button
-                    colorScheme="green"
-                    mr={3}
-                    leftIcon={<FaSatellite />}
-                    onClick={() => {
-                      if (!safeAddress || !requestAmount) return
-                      try {
-                        const amountInWei = ethers.parseEther(requestAmount).toString()
-                        const paymentUrl = generatePaymentRequestUrl(
-                          safeAddress,
-                          amountInWei,
-                          EURO_TOKEN_ADDRESS
-                        )
-                        writeNFC(paymentUrl)
-                      } catch (err) {
-                        toast({
-                          title: 'Invalid Amount',
-                          description: 'Please enter a valid EUR amount.',
-                          status: 'error',
-                          duration: 3000,
-                        })
-                      }
-                    }}
-                    isDisabled={!requestAmount || parseFloat(requestAmount) <= 0}
-                  >
-                    Write to NFC
-                  </Button>
-                ) : (
-                  <Tooltip
-                    label="NFC write requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Some devices may have restricted NFC write access."
-                    fontSize="sm"
-                    hasArrow
-                  >
-                    <Button isDisabled colorScheme="gray">
-                      NFC Not Available
+              <Dialog.Footer pt={{ base: 2, md: 4 }} gap={2} flexWrap="wrap">
+                {!isQRGenerated ? (
+                  <>
+                    <Button
+                      bg="blue.600"
+                      color="white"
+                      _hover={{ bg: 'blue.500' }}
+                      size={{ base: 'sm', md: 'md' }}
+                      onClick={handleRequestPayment}
+                      disabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                    >
+                      <FaQrcode />
+                      Generate QR
                     </Button>
-                  </Tooltip>
-                )}
 
-                <Button variant="ghost" onClick={handleRequestModalClose}>
-                  Close
-                </Button>
-              </>
-            ) : (
-              <Button colorScheme="purple" onClick={handleRequestModalClose}>
-                Close
-              </Button>
-            )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                    {isWebNFCSupported ? (
+                      <Button
+                        bg="green.600"
+                        color="white"
+                        _hover={{ bg: 'green.500' }}
+                        size={{ base: 'sm', md: 'md' }}
+                        onClick={() => {
+                          if (!safeAddress || !requestAmount) return
+                          try {
+                            const amountInWei = ethers.parseEther(requestAmount).toString()
+                            const paymentUrl = generatePaymentRequestUrl(
+                              safeAddress,
+                              amountInWei,
+                              EURO_TOKEN_ADDRESS
+                            )
+                            writeNFC(paymentUrl)
+                          } catch (err) {
+                            toaster.create({
+                              title: 'Invalid Amount',
+                              description: 'Please enter a valid EUR amount.',
+                              type: 'error',
+                              duration: 3000,
+                            })
+                          }
+                        }}
+                        disabled={!requestAmount || parseFloat(requestAmount) <= 0}
+                      >
+                        <FaSatellite />
+                        Write to NFC
+                      </Button>
+                    ) : (
+                      <Tooltip
+                        content="NFC write requires HTTPS, Android device, Chrome browser, and NDEFWriter API support. Some devices may have restricted NFC write access."
+                        showArrow={true}
+                      >
+                        <span>
+                          <Button disabled bg="gray.600" size={{ base: 'sm', md: 'md' }}>
+                            NFC Not Available
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size={{ base: 'sm', md: 'md' }}
+                      onClick={handleRequestModalClose}
+                    >
+                      Close
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    bg={brandColors.accent}
+                    color="white"
+                    _hover={{ bg: brandColors.accent, opacity: 0.8 }}
+                    onClick={handleRequestModalClose}
+                  >
+                    Close
+                  </Button>
+                )}
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </Container>
   )
 }

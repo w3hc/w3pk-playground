@@ -6,15 +6,12 @@ import {
   HStack,
   Text,
   Badge,
-  Card,
-  CardHeader,
-  CardBody,
   Heading,
   Spinner,
-  IconButton,
-  Tooltip,
-  useToast,
+  Tooltip as ChakraTooltip,
 } from '@chakra-ui/react'
+import { IconButton } from '@/components/ui/icon-button'
+import { toaster } from '@/components/ui/toaster'
 import { FiArrowUpRight, FiArrowDownLeft, FiRefreshCw, FiExternalLink } from 'react-icons/fi'
 import { ethers } from 'ethers'
 import { Transaction } from '@/lib/safeStorage'
@@ -41,15 +38,12 @@ export function TransactionHistory({
   lastUpdated = null,
   isRefetchingAfterConfirmation = false,
 }: TransactionHistoryProps) {
-  const toast = useToast()
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      toast({
+      toaster.create({
         title: `${label} copied!`,
-        status: 'success',
+        type: 'success',
         duration: 2000,
-        isClosable: true,
       })
     })
   }
@@ -94,82 +88,87 @@ export function TransactionHistory({
 
   if (isLoading && transactions.length === 0) {
     return (
-      <Card bg="gray.800" borderColor="gray.700">
-        <CardBody>
-          <VStack spacing={4} py={8}>
-            <Spinner size="lg" color="purple.500" />
-            <Text color="gray.400">Loading transactions from blockchain...</Text>
-          </VStack>
-        </CardBody>
-      </Card>
+      <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+        <VStack gap={4} py={8}>
+          <Spinner size="lg" color="purple.500" />
+          <Text color="gray.400">Loading transactions from blockchain...</Text>
+        </VStack>
+      </Box>
     )
   }
 
   if (isError && error) {
     return (
-      <Card bg="gray.800" borderColor="gray.700">
-        <CardHeader>
-          <HStack justify="space-between">
-            <Heading size="md">Transaction History</Heading>
-            <Tooltip label="Retry">
+      <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+        <HStack justify="space-between" mb={4}>
+          <Heading size="md">Transaction History</Heading>
+          <ChakraTooltip.Root>
+            <ChakraTooltip.Trigger asChild>
               <IconButton
                 aria-label="Retry"
-                icon={<FiRefreshCw />}
                 size="sm"
                 variant="ghost"
                 onClick={onRefresh}
-              />
-            </Tooltip>
-          </HStack>
-        </CardHeader>
-        <CardBody>
-          <VStack spacing={4} py={8}>
-            <Text color="red.400" fontWeight="bold">
-              Failed to load transactions
-            </Text>
-            <Text color="gray.400" fontSize="sm" textAlign="center">
-              {error.message}
-            </Text>
-            <Text color="gray.500" fontSize="xs">
-              Click the refresh button to try again
-            </Text>
-          </VStack>
-        </CardBody>
-      </Card>
+              >
+                <FiRefreshCw />
+              </IconButton>
+            </ChakraTooltip.Trigger>
+            <ChakraTooltip.Positioner>
+              <ChakraTooltip.Content>Retry</ChakraTooltip.Content>
+            </ChakraTooltip.Positioner>
+          </ChakraTooltip.Root>
+        </HStack>
+        <VStack gap={4} py={8}>
+          <Text color="red.400" fontWeight="bold">
+            Failed to load transactions
+          </Text>
+          <Text color="gray.400" fontSize="sm" textAlign="center">
+            {error.message}
+          </Text>
+          <Text color="gray.500" fontSize="xs">
+            Click the refresh button to try again
+          </Text>
+        </VStack>
+      </Box>
     )
   }
 
   return (
-    <Card bg="gray.800" borderColor="gray.700">
-      <CardHeader>
-        <HStack justify="space-between">
-          <VStack align="start" spacing={0}>
-            <Heading size="md">Transaction History</Heading>
-            {lastUpdated && (
-              <Text fontSize="xs" color="gray.500">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </Text>
-            )}
-          </VStack>
-          <HStack spacing={2}>
-            <Badge colorScheme="purple" fontSize="xs">
-              Onchain
-            </Badge>
-            <Tooltip label="Refresh transactions">
+    <Box bg="gray.900" p={6} borderRadius="lg" border="1px solid" borderColor="gray.700">
+      <HStack justify="space-between" mb={4}>
+        <VStack align="start" gap={0}>
+          <Heading size="md">Transaction History</Heading>
+          {lastUpdated && (
+            <Text fontSize="xs" color="gray.500">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </Text>
+          )}
+        </VStack>
+        <HStack gap={2}>
+          <Badge colorPalette="purple" fontSize="xs">
+            Onchain
+          </Badge>
+          <ChakraTooltip.Root>
+            <ChakraTooltip.Trigger asChild>
               <IconButton
                 aria-label="Refresh transactions"
-                icon={<FiRefreshCw />}
                 size="sm"
                 variant="ghost"
                 onClick={onRefresh}
-              />
-            </Tooltip>
-          </HStack>
+              >
+                <FiRefreshCw />
+              </IconButton>
+            </ChakraTooltip.Trigger>
+            <ChakraTooltip.Positioner>
+              <ChakraTooltip.Content>Refresh transactions</ChakraTooltip.Content>
+            </ChakraTooltip.Positioner>
+          </ChakraTooltip.Root>
+        </HStack>
           {/* {isRefetchingAfterConfirmation ? (
             // <CustomSpinner size="100px" />
             ' '
           ) : (
-            <HStack spacing={2}>
+            <HStack gap={2}>
               <Badge colorScheme="purple" fontSize="xs">
                 Onchain
               </Badge>
@@ -184,9 +183,8 @@ export function TransactionHistory({
               </Tooltip>
             </HStack>
           )} */}
-        </HStack>
-      </CardHeader>
-      <CardBody>
+      </HStack>
+      <VStack gap={4} align="stretch">
         {transactions.length === 0 ? (
           <Box textAlign="center" py={8}>
             <Text color="gray.500">No transactions yet</Text>
@@ -195,7 +193,7 @@ export function TransactionHistory({
             </Text>
           </Box>
         ) : (
-          <VStack spacing={3} align="stretch">
+          <VStack gap={3} align="stretch">
             {transactions.map((tx, index) => (
               <Box
                 key={`${tx.txHash}-${tx.direction}-${index}`}
@@ -208,7 +206,7 @@ export function TransactionHistory({
                 transition="all 0.2s"
               >
                 <HStack justify="space-between" mb={2}>
-                  <HStack spacing={2}>
+                  <HStack gap={2}>
                     {tx.direction === 'outgoing' ? (
                       <Box color="orange.400">
                         <FiArrowUpRight size={20} />
@@ -218,7 +216,7 @@ export function TransactionHistory({
                         <FiArrowDownLeft size={20} />
                       </Box>
                     )}
-                    <VStack align="start" spacing={0}>
+                    <VStack align="start" gap={0}>
                       <Text fontWeight="bold" fontSize="sm">
                         {tx.isSelfTransfer
                           ? 'Self-Transfer'
@@ -231,12 +229,12 @@ export function TransactionHistory({
                       </Text>
                     </VStack>
                   </HStack>
-                  <Badge colorScheme={getStatusColor(tx.status)} fontSize="xs">
+                  <Badge colorPalette={getStatusColor(tx.status)} fontSize="xs">
                     {tx.status === 'verified' ? 'PAID' : tx.status}
                   </Badge>
                 </HStack>
 
-                <VStack align="stretch" spacing={2} fontSize="sm">
+                <VStack align="stretch" gap={2} fontSize="sm">
                   <HStack justify="space-between">
                     <Text color="gray.400">Amount:</Text>
                     <Text fontWeight="bold" fontFamily="mono">
@@ -292,27 +290,31 @@ export function TransactionHistory({
                       Tx Hash:
                     </Text>
                     {tx.txHash ? (
-                      <HStack spacing={1}>
+                      <HStack gap={1}>
                         <Text fontFamily="mono" fontSize="xs" color="blue.400">
                           {formatAddress(tx.txHash)}
                         </Text>
                         <IconButton
-                          as="a"
-                          href={getBlockExplorerUrl(tx.txHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          asChild
                           aria-label="View on explorer"
-                          icon={<FiExternalLink />}
                           size="xs"
                           variant="ghost"
                           color="blue.400"
-                        />
+                        >
+                          <a
+                            href={getBlockExplorerUrl(tx.txHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <FiExternalLink />
+                          </a>
+                        </IconButton>
                       </HStack>
                     ) : (
                       <Text
                         fontSize="xs"
                         color="blue.400"
-                        sx={{
+                        css={{
                           '@keyframes blink': {
                             '0%, 100%': { opacity: 1 },
                             '50%': { opacity: 0.3 },
@@ -329,7 +331,7 @@ export function TransactionHistory({
             ))}
           </VStack>
         )}
-      </CardBody>
-    </Card>
+      </VStack>
+    </Box>
   )
 }

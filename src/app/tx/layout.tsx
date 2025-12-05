@@ -1,11 +1,11 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Payment',
+  title: 'Shebam',
   description: 'Send and receive EUR with your Safe wallet',
 
   openGraph: {
-    title: 'Payment | W3PK Playground',
+    title: 'Web3 payment app',
     description: 'Send and receive EUR with your Safe wallet',
     url: 'https://w3pk.w3hc.org/tx',
     siteName: 'w3pk Playground',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'Payment | W3PK Playground',
+    title: 'Web3 payment app',
     description: 'Send and receive EUR with your Safe wallet',
     images: ['/huangshan.png'],
     creator: '@julienbrg',

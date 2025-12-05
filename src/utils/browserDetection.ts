@@ -156,8 +156,16 @@ export function detectBrowser(): BrowserInfo {
     const versionNum = parseInt(version)
     if (!isNaN(versionNum) && versionNum >= 60) {
       isSupported = true
-      hasKnownIssues = false
-      warningLevel = 'none'
+      // Firefox on Linux sometimes has WebAuthn permission issues
+      if (os === 'Linux') {
+        hasKnownIssues = true
+        recommendation =
+          'Firefox on Linux may have WebAuthn permission issues. If registration fails, try Chrome/Chromium instead, or check Firefox privacy settings (about:preferences#privacy).'
+        warningLevel = 'warning'
+      } else {
+        hasKnownIssues = false
+        warningLevel = 'none'
+      }
     } else {
       isSupported = false
       recommendation = 'Please update Firefox to version 60 or higher.'
@@ -216,4 +224,63 @@ export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
     console.error('Error checking platform authenticator:', error)
     return false
   }
+}
+
+/**
+ * Checks if the page is running in a secure context (HTTPS or localhost)
+ */
+export function isSecureContext(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.isSecureContext
+}
+
+/**
+ * Gets detailed capability information for WebAuthn
+ */
+export interface WebAuthnCapabilities {
+  isAvailable: boolean
+  isSecureContext: boolean
+  hasPlatformAuthenticator: boolean | null
+  errorMessage?: string
+  recommendation?: string
+}
+
+export async function getWebAuthnCapabilities(): Promise<WebAuthnCapabilities> {
+  const capabilities: WebAuthnCapabilities = {
+    isAvailable: false,
+    isSecureContext: false,
+    hasPlatformAuthenticator: null,
+  }
+
+  // Check secure context
+  capabilities.isSecureContext = isSecureContext()
+  if (!capabilities.isSecureContext) {
+    capabilities.errorMessage = 'WebAuthn requires a secure context (HTTPS or localhost)'
+    capabilities.recommendation = 'Please access this page via HTTPS or localhost'
+    return capabilities
+  }
+
+  // Check WebAuthn availability
+  capabilities.isAvailable = isWebAuthnAvailable()
+  if (!capabilities.isAvailable) {
+    capabilities.errorMessage = 'WebAuthn is not available in this browser'
+    capabilities.recommendation = 'Please use a modern browser like Chrome, Firefox, Safari, or Edge'
+    return capabilities
+  }
+
+  // Check platform authenticator
+  try {
+    capabilities.hasPlatformAuthenticator = await isPlatformAuthenticatorAvailable()
+    if (!capabilities.hasPlatformAuthenticator) {
+      capabilities.errorMessage = 'No platform authenticator detected'
+      capabilities.recommendation =
+        'Ensure your device has biometric authentication (fingerprint, face recognition) or a PIN enabled'
+    }
+  } catch (error) {
+    console.error('Error checking platform authenticator:', error)
+    capabilities.hasPlatformAuthenticator = null
+    capabilities.errorMessage = 'Could not verify platform authenticator availability'
+  }
+
+  return capabilities
 }

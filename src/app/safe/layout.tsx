@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Safe Wallet | W3PK Playground',
+  title: 'Web3 payment app',
   description: 'Deploy and manage your Safe onchain wallet with session keys',
 }
 
