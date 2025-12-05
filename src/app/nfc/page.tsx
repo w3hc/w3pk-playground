@@ -6,11 +6,11 @@ import {
   Box,
   Heading,
   Text,
-  Card,
   HStack,
   Code,
   Separator,
 } from '@chakra-ui/react'
+import { Card } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { toaster } from '@/components/ui/toaster'
@@ -433,7 +433,7 @@ export default function NFCDebugPage() {
             </Text>
           </>
         ) : (
-          <Text fontSize="sm" fontWeight="bold" fontFamily="mono" isTruncated maxW="250px">
+          <Text fontSize="sm" fontWeight="bold" fontFamily="mono" truncate maxW="250px">
             {String(value)}
           </Text>
         )}
@@ -469,7 +469,7 @@ export default function NFCDebugPage() {
               ) : (
                 <FaTimesCircle size={32} color="salmon" />
               )}
-              <VStack align="start" spacing={0}>
+              <VStack align="start" gap={0}>
                 <Heading size="md">NFC is {isNFCSupported ? 'SUPPORTED' : 'NOT SUPPORTED'}</Heading>
                 <Text fontSize="sm" color="gray.300">
                   {isNFCSupported
@@ -516,7 +516,7 @@ export default function NFCDebugPage() {
                         <Text fontWeight="bold" mb={2} color="red.300">
                           Permission is granted, but NDEFWriter is still missing!
                         </Text>
-                        <VStack align="stretch" spacing={3}>
+                        <VStack align="stretch" gap={3}>
                           <Text>
                             This is NOT a permission issue. Most likely causes:
                             <br />
@@ -536,7 +536,7 @@ export default function NFCDebugPage() {
                         <Text fontWeight="bold" mb={2}>
                           Most likely cause: Site permissions not granted for NFC
                         </Text>
-                        <VStack align="stretch" spacing={3}>
+                        <VStack align="stretch" gap={3}>
                           <Text>
                             Go to Chrome → Settings → Site Settings → NFC and make sure{' '}
                             <Code fontSize="xs">{debugInfo.hostname}</Code> is allowed.
@@ -545,10 +545,10 @@ export default function NFCDebugPage() {
                             colorScheme="orange"
                             size="sm"
                             onClick={requestNFCPermission}
-                            isLoading={isRequestingPermission}
+                            loading={isRequestingPermission}
                             loadingText="Requesting..."
-                            leftIcon={<FaSatellite />}
                           >
+                            <FaSatellite />
                             Request NFC Permission
                           </Button>
                           <Text fontSize="xs" color="gray.400">
@@ -753,21 +753,21 @@ export default function NFCDebugPage() {
                   <Button
                     colorScheme="blue"
                     onClick={testNFCRead}
-                    isLoading={isTesting}
+                    loading={isTesting}
                     loadingText="Scanning..."
-                    leftIcon={<FaSatellite />}
                     flex={1}
                   >
+                    <FaSatellite />
                     Test NFC Read
                   </Button>
                   <Button
                     colorScheme="green"
                     onClick={testNFCWrite}
-                    isLoading={isTesting}
+                    loading={isTesting}
                     loadingText="Writing..."
-                    leftIcon={<FaSatellite />}
                     flex={1}
                   >
+                    <FaSatellite />
                     Test NFC Write
                   </Button>
                 </HStack>
@@ -793,7 +793,7 @@ export default function NFCDebugPage() {
         {/* Quick Links */}
         <Box textAlign="center">
           <HStack justify="center" gap={4}>
-            <Button as="a" href="/" variant="link" size="sm" color="gray.500">
+            <Button as="a" href="/" variant="plain" size="sm" color="gray.500">
               ← Payment Page
             </Button>
           </HStack>
@@ -866,11 +866,11 @@ export default function NFCDebugPage() {
                         colorScheme="orange"
                         size="sm"
                         onClick={requestNFCPermission}
-                        isLoading={isRequestingPermission}
+                        loading={isRequestingPermission}
                         loadingText="Requesting..."
-                        leftIcon={<FaSatellite />}
                         mt={2}
                       >
+                        <FaSatellite />
                         Request NFC Permission Now
                       </Button>
                       <Text color="gray.400" fontSize="xs" mt={2}>
