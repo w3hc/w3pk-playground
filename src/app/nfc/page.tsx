@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { toaster } from '@/components/ui/toaster'
 import { useState, useEffect } from 'react'
 import { FaSatellite, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import Link from 'next/link'
 
 interface NFCDebugInfo {
   // Browser & Environment
@@ -793,9 +794,11 @@ export default function NFCDebugPage() {
         {/* Quick Links */}
         <Box textAlign="center">
           <HStack justify="center" gap={4}>
-            <Button as="a" href="/" variant="plain" size="sm" color="gray.500">
-              ← Payment Page
-            </Button>
+            <Link href="/">
+              <Button variant="plain" size="sm" color="gray.500">
+                ← Payment Page
+              </Button>
+            </Link>
           </HStack>
         </Box>
 
