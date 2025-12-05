@@ -3,17 +3,15 @@ import { Metadata } from 'next'
 export const metadata: Metadata = {
   metadataBase: new URL('https://w3pk.w3hc.org'),
 
-  title: 'w3pk Playground',
-  description:
-    'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
+  title: 'Shebam',
+  description: 'Web3 payment app',
 
-  keywords: ['w3pk', 'WebAuthn', 'Next.js', 'Web3', 'Ethereum'],
+  keywords: ['shebam', 'w3pk', 'WebAuthn', 'Next.js', 'Web3', 'Ethereum'],
   authors: [{ name: 'W3HC', url: 'https://github.com/w3hc' }],
 
   openGraph: {
-    title: 'w3pk Playground',
-    description:
-      'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
+    title: 'Shebam',
+    description: 'Web3 payment app',
     url: 'https://w3pk.w3hc.org',
     siteName: 'w3pk Playground',
     images: [
@@ -21,7 +19,7 @@ export const metadata: Metadata = {
         url: '/huangshan.png',
         width: 1200,
         height: 630,
-        alt: 'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
+        alt: 'Web3 payment app',
       },
     ],
     locale: 'en_US',
@@ -30,9 +28,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'w3pk Playground',
-    description:
-      'Passwordless Ethereum wallets secured by biometric authentication and client-side encryption',
+    title: 'Shebam',
+    description: 'Web3 payment app',
     images: ['/huangshan.png'],
     creator: '@julienbrg',
   },
