@@ -739,7 +739,7 @@ export default function NFCDebugPage() {
 
         {/* NFC Tests */}
         {isNFCSupported && (
-          <Card bg="gray.800" borderColor="gray.700">
+          <Card.Root bg="gray.800" borderColor="gray.700">
             <Card.Header>
               <Heading size="md">NFC Function Tests</Heading>
             </Card.Header>
@@ -787,7 +787,7 @@ export default function NFCDebugPage() {
                 </Text>
               </VStack>
             </Card.Body>
-          </Card>
+          </Card.Root>
         )}
 
         {/* Quick Links */}
@@ -819,7 +819,7 @@ export default function NFCDebugPage() {
 
         {/* Troubleshooting - Only show if NDEFWriter is missing but Reader is available */}
         {debugInfo.hasNDEFReader && !debugInfo.hasNDEFWriter && (
-          <Card bg="orange.900" borderColor="orange.700">
+          <Card.Root bg="orange.900" borderColor="orange.700">
             <Card.Header>
               <Heading size="sm">🔧 Troubleshooting NDEFWriter Issue</Heading>
             </Card.Header>
@@ -969,7 +969,7 @@ export default function NFCDebugPage() {
                 </Alert.Root>
               </VStack>
             </Card.Body>
-          </Card>
+          </Card.Root>
         )}
       </VStack>
     </Container>
